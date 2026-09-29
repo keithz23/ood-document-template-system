@@ -1,16 +1,19 @@
 # Document Template System
 
-Phase 1 scaffold for the OOD Document Template System described in
-[`AGENTS.md`](./AGENTS.md). Business entities, workflows, and the required
-Prototype, Composite, and Strategy implementations intentionally begin in later
-phases.
+Phase 2 domain foundation for the OOD Document Template System described in
+[`AGENTS.md`](./AGENTS.md). The repository includes the approved domain model,
+EF Core persistence mappings, and the required Prototype, Composite, and
+Strategy implementations. Feature controllers and frontend API integration are
+intentionally deferred to later phases.
 
 ## Repository layout
 
 - `frontend/` — Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui,
   TanStack Query, Axios, React Hook Form, and Zod.
 - `backend/` — ASP.NET Core REST API with Domain, Application,
-  Infrastructure, API, unit-test, and integration-test projects.
+  Infrastructure, API, unit-test, and integration-test projects. The Domain
+  project contains the Phase 2 entities, invariants, and design patterns;
+  Infrastructure contains the PostgreSQL EF Core model.
 - `docker-compose.yml` — local PostgreSQL service.
 
 ## Prerequisites
@@ -53,4 +56,3 @@ npm --prefix frontend run build
 dotnet build backend/DocumentTemplateSystem.sln
 dotnet test backend/DocumentTemplateSystem.sln
 ```
-

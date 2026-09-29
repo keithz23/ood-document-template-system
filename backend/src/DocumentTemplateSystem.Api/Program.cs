@@ -1,5 +1,6 @@
 using DocumentTemplateSystem.Api.Extensions;
 using DocumentTemplateSystem.Infrastructure;
+using DocumentTemplateSystem.Infrastructure.Persistence.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,12 @@ builder.Services.AddApiServices(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment()
+    && app.Configuration.GetValue<bool>("SeedData:Enabled"))
+{
+    await app.Services.SeedDevelopmentDataAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {

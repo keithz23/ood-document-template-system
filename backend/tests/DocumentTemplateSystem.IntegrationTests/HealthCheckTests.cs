@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace DocumentTemplateSystem.IntegrationTests;
@@ -8,10 +9,13 @@ public sealed class HealthCheckTests : IClassFixture<WebApplicationFactory<Progr
 
     public HealthCheckTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            BaseAddress = new Uri("https://localhost")
-        });
+        _client = factory
+            .WithWebHostBuilder(builder =>
+                builder.UseSetting("SeedData:Enabled", "false"))
+            .CreateClient(new WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://localhost")
+            });
     }
 
     [Fact]
