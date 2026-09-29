@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DocumentTemplateSystem.Api\DocumentTemplateSystem.Api.csproj" />
+    <ProjectReference Include="..\..\src\DocumentTemplateSystem.Infrastructure\DocumentTemplateSystem.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
