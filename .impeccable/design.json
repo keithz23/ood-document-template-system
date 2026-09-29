@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-29T04:33:57Z",
+  "title": "Design System: Document Template System",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas Gray",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.45 0 0)", "oklch(0.55 0 0)", "oklch(0.7 0 0)", "oklch(0.85 0 0)", "oklch(0.95 0 0)"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Paper Surface",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.45 0 0)", "oklch(0.55 0 0)", "oklch(0.7 0 0)", "oklch(0.85 0 0)", "oklch(0.95 0 0)"]
+      },
+      "surface-subtle": {
+        "role": "neutral",
+        "displayName": "Quiet Fill",
+        "canonical": "oklch(0.97 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.45 0 0)", "oklch(0.55 0 0)", "oklch(0.7 0 0)", "oklch(0.85 0 0)", "oklch(0.95 0 0)"]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Graphite Text",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.45 0 0)", "oklch(0.55 0 0)", "oklch(0.7 0 0)", "oklch(0.85 0 0)", "oklch(0.95 0 0)"]
+      },
+      "foreground-muted": {
+        "role": "neutral",
+        "displayName": "Muted Graphite",
+        "canonical": "oklch(0.556 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.45 0 0)", "oklch(0.55 0 0)", "oklch(0.7 0 0)", "oklch(0.85 0 0)", "oklch(0.95 0 0)"]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Workbench Ink",
+        "canonical": "oklch(0.205 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.45 0 0)", "oklch(0.55 0 0)", "oklch(0.7 0 0)", "oklch(0.85 0 0)", "oklch(0.95 0 0)"]
+      },
+      "primary-foreground": {
+        "role": "neutral",
+        "displayName": "Ink Contrast",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.45 0 0)", "oklch(0.55 0 0)", "oklch(0.7 0 0)", "oklch(0.85 0 0)", "oklch(0.95 0 0)"]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline Border",
+        "canonical": "oklch(0.922 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.45 0 0)", "oklch(0.55 0 0)", "oklch(0.7 0 0)", "oklch(0.85 0 0)", "oklch(0.95 0 0)"]
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "Clear Focus Blue",
+        "canonical": "oklch(0.488 0.243 264.376)",
+        "tonalRamp": ["oklch(0.15 0.05 264.376)", "oklch(0.25 0.1 264.376)", "oklch(0.35 0.17 264.376)", "oklch(0.48 0.243 264.376)", "oklch(0.6 0.2 264.376)", "oklch(0.72 0.14 264.376)", "oklch(0.85 0.07 264.376)", "oklch(0.95 0.025 264.376)"]
+      },
+      "information": {
+        "role": "primary",
+        "displayName": "Information Blue",
+        "canonical": "oklch(0.488 0.243 264.376)",
+        "tonalRamp": ["oklch(0.15 0.05 264.376)", "oklch(0.25 0.1 264.376)", "oklch(0.35 0.17 264.376)", "oklch(0.48 0.243 264.376)", "oklch(0.6 0.2 264.376)", "oklch(0.72 0.14 264.376)", "oklch(0.85 0.07 264.376)", "oklch(0.95 0.025 264.376)"]
+      },
+      "information-subtle": {
+        "role": "primary",
+        "displayName": "Information Wash",
+        "canonical": "oklch(0.97 0.014 254.604)",
+        "tonalRamp": ["oklch(0.15 0.014 254.604)", "oklch(0.25 0.014 254.604)", "oklch(0.35 0.014 254.604)", "oklch(0.45 0.014 254.604)", "oklch(0.55 0.014 254.604)", "oklch(0.7 0.014 254.604)", "oklch(0.85 0.014 254.604)", "oklch(0.95 0.014 254.604)"]
+      },
+      "success": {
+        "role": "secondary",
+        "displayName": "Completion Green",
+        "canonical": "oklch(0.448 0.119 151.328)",
+        "tonalRamp": ["oklch(0.15 0.05 151.328)", "oklch(0.25 0.08 151.328)", "oklch(0.35 0.11 151.328)", "oklch(0.45 0.119 151.328)", "oklch(0.6 0.1 151.328)", "oklch(0.72 0.08 151.328)", "oklch(0.85 0.05 151.328)", "oklch(0.95 0.02 151.328)"]
+      },
+      "success-subtle": {
+        "role": "secondary",
+        "displayName": "Completion Wash",
+        "canonical": "oklch(0.982 0.018 155.826)",
+        "tonalRamp": ["oklch(0.15 0.018 155.826)", "oklch(0.25 0.018 155.826)", "oklch(0.35 0.018 155.826)", "oklch(0.45 0.018 155.826)", "oklch(0.55 0.018 155.826)", "oklch(0.7 0.018 155.826)", "oklch(0.85 0.018 155.826)", "oklch(0.95 0.018 155.826)"]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Working Amber",
+        "canonical": "oklch(0.473 0.137 46.201)",
+        "tonalRamp": ["oklch(0.15 0.05 46.201)", "oklch(0.25 0.08 46.201)", "oklch(0.35 0.11 46.201)", "oklch(0.47 0.137 46.201)", "oklch(0.6 0.12 46.201)", "oklch(0.72 0.09 46.201)", "oklch(0.85 0.05 46.201)", "oklch(0.95 0.02 46.201)"]
+      },
+      "warning-subtle": {
+        "role": "tertiary",
+        "displayName": "Working Amber Wash",
+        "canonical": "oklch(0.987 0.022 95.277)",
+        "tonalRamp": ["oklch(0.15 0.022 95.277)", "oklch(0.25 0.022 95.277)", "oklch(0.35 0.022 95.277)", "oklch(0.45 0.022 95.277)", "oklch(0.55 0.022 95.277)", "oklch(0.7 0.022 95.277)", "oklch(0.85 0.022 95.277)", "oklch(0.95 0.022 95.277)"]
+      },
+      "destructive": {
+        "role": "tertiary",
+        "displayName": "Validation Red",
+        "canonical": "oklch(0.505 0.213 27.518)",
+        "tonalRamp": ["oklch(0.15 0.05 27.518)", "oklch(0.25 0.1 27.518)", "oklch(0.35 0.16 27.518)", "oklch(0.5 0.213 27.518)", "oklch(0.62 0.18 27.518)", "oklch(0.74 0.13 27.518)", "oklch(0.86 0.07 27.518)", "oklch(0.95 0.025 27.518)"]
+      },
+      "destructive-subtle": {
+        "role": "tertiary",
+        "displayName": "Validation Wash",
+        "canonical": "oklch(0.971 0.013 17.38)",
+        "tonalRamp": ["oklch(0.15 0.013 17.38)", "oklch(0.25 0.013 17.38)", "oklch(0.35 0.013 17.38)", "oklch(0.45 0.013 17.38)", "oklch(0.55 0.013 17.38)", "oklch(0.7 0.013 17.38)", "oklch(0.85 0.013 17.38)", "oklch(0.95 0.013 17.38)"]
+      }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Page headline", "purpose": "The single title for an application route." },
+      "title": { "displayName": "Section title", "purpose": "Panels, form groups, and dialogs." },
+      "body": { "displayName": "Operational body", "purpose": "Default UI copy, field values, and table cells." },
+      "label": { "displayName": "Control label", "purpose": "Actions, fields, navigation, and compact controls." },
+      "caption": { "displayName": "Metadata caption", "purpose": "Timestamps, technical IDs, and secondary context." }
+    },
+    "shadows": [
+      { "name": "surface-trace", "value": "0 1px 2px rgb(0 0 0 / 0.04)", "purpose": "Optional separation for a document sheet above the canvas." },
+      { "name": "overlay", "value": "0 12px 32px rgb(0 0 0 / 0.12)", "purpose": "Dialogs, popovers, and menus only." }
+    ],
+    "motion": [
+      { "name": "state", "value": "150ms ease-out", "purpose": "Hover, focus, disclosure, and selection feedback." },
+      { "name": "overlay", "value": "200ms ease-out", "purpose": "Dialog and drawer entry or exit." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The strongest action in a region, limited to one clear primary choice.",
+      "html": "<button class=\"ds-btn-primary\">Save draft</button>",
+      "css": ".ds-btn-primary { height: 36px; padding: 0 14px; border: 1px solid transparent; border-radius: 8px; background: oklch(0.205 0 0); color: oklch(0.985 0 0); font: 500 13px/18px Arial, Helvetica, sans-serif; transition: background 150ms ease-out, box-shadow 150ms ease-out; } .ds-btn-primary:hover { background: oklch(0.28 0 0); } .ds-btn-primary:focus-visible { outline: 3px solid oklch(0.488 0.243 264.376 / 0.35); outline-offset: 2px; } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A reversible or lower-emphasis alternative action.",
+      "html": "<button class=\"ds-btn-secondary\">Preview</button>",
+      "css": ".ds-btn-secondary { height: 36px; padding: 0 14px; border: 1px solid oklch(0.922 0 0); border-radius: 8px; background: oklch(1 0 0); color: oklch(0.145 0 0); font: 500 13px/18px Arial, Helvetica, sans-serif; transition: background 150ms ease-out, border-color 150ms ease-out; } .ds-btn-secondary:hover { background: oklch(0.97 0 0); border-color: oklch(0.82 0 0); } .ds-btn-secondary:focus-visible { outline: 3px solid oklch(0.488 0.243 264.376 / 0.35); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "A labeled operational input with persistent context and strong focus treatment.",
+      "html": "<label class=\"ds-field-label\" for=\"ds-title\">Document title</label><input class=\"ds-field\" id=\"ds-title\" value=\"Quarterly report\" />",
+      "css": ".ds-field-label { display: block; margin-bottom: 6px; color: oklch(0.145 0 0); font: 500 13px/18px Arial, Helvetica, sans-serif; } .ds-field { width: 280px; height: 40px; padding: 0 12px; border: 1px solid oklch(0.922 0 0); border-radius: 8px; background: oklch(1 0 0); color: oklch(0.145 0 0); font: 400 14px/20px Arial, Helvetica, sans-serif; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; } .ds-field:hover { border-color: oklch(0.78 0 0); } .ds-field:focus-visible { border-color: oklch(0.488 0.243 264.376); outline: 3px solid oklch(0.488 0.243 264.376 / 0.2); outline-offset: 1px; }"
+    },
+    {
+      "name": "Active Navigation Item",
+      "kind": "nav",
+      "description": "A quiet, unmistakable active destination in the operational shell.",
+      "html": "<a class=\"ds-nav-active\" href=\"#\">My documents</a>",
+      "css": ".ds-nav-active { display: flex; align-items: center; min-height: 36px; padding: 8px 10px 8px 12px; border-left: 3px solid oklch(0.205 0 0); border-radius: 6px; background: oklch(0.97 0 0); color: oklch(0.145 0 0); font: 500 13px/18px Arial, Helvetica, sans-serif; text-decoration: none; } .ds-nav-active:hover { background: oklch(0.95 0 0); } .ds-nav-active:focus-visible { outline: 3px solid oklch(0.488 0.243 264.376 / 0.35); outline-offset: 2px; }"
+    },
+    {
+      "name": "Active Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "A compact lifecycle label that pairs semantic color with literal status text.",
+      "html": "<span class=\"ds-badge-success\"><span aria-hidden=\"true\">●</span> Active</span>",
+      "css": ".ds-badge-success { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border: 1px solid oklch(0.9 0.04 155.826); border-radius: 999px; background: oklch(0.982 0.018 155.826); color: oklch(0.448 0.119 151.328); font: 500 12px/16px Arial, Helvetica, sans-serif; }"
+    },
+    {
+      "name": "Operational Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A bordered work panel for one coherent object or task.",
+      "html": "<section class=\"ds-card\"><h3>Placeholder values</h3><p>Complete the required fields before finalizing.</p></section>",
+      "css": ".ds-card { width: 320px; padding: 24px; border: 1px solid oklch(0.922 0 0); border-radius: 10px; background: oklch(1 0 0); color: oklch(0.145 0 0); } .ds-card h3 { margin: 0 0 8px; font: 600 18px/28px Arial, Helvetica, sans-serif; } .ds-card p { margin: 0; color: oklch(0.556 0 0); font: 400 14px/20px Arial, Helvetica, sans-serif; } .ds-card:focus-within { border-color: oklch(0.488 0.243 264.376); }"
+    },
+    {
+      "name": "Document Sheet",
+      "kind": "custom",
+      "description": "The paper-like reading and editing surface that remains dominant in the editor workspace.",
+      "html": "<article class=\"ds-document\"><p class=\"ds-document-meta\">Quarterly report</p><h2>Executive summary</h2><p>Document content remains the visual focus.</p></article>",
+      "css": ".ds-document { width: 420px; min-height: 300px; padding: 48px; border: 1px solid oklch(0.922 0 0); border-radius: 10px; background: oklch(1 0 0); color: oklch(0.145 0 0); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04); } .ds-document-meta { margin: 0 0 24px; color: oklch(0.556 0 0); font: 500 12px/16px Arial, Helvetica, sans-serif; } .ds-document h2 { margin: 0 0 12px; font: 600 24px/32px Arial, Helvetica, sans-serif; } .ds-document p { font: 400 14px/20px Arial, Helvetica, sans-serif; } .ds-document:focus-within { outline: 3px solid oklch(0.488 0.243 264.376 / 0.25); outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Workbench",
+    "overview": "The interface is a focused place for sustained document work. It should feel calm, exact, and dependable: closer to a well-organized desktop application than a promotional website. Hierarchy comes from alignment, type weight, spacing, and carefully layered neutral surfaces. Color is reserved for focus, status, validation, and consequential actions.\n\nThe system favors operational density without becoming cramped. Primary author workflows receive the clearest route and largest working area; administrative screens use the same visual language at a slightly denser information level. Copy is direct and literal. Motion is limited to brief state transitions, progress feedback, and spatial orientation; it never decorates idle surfaces.",
+    "keyCharacteristics": [
+      "Restrained neutral palette with semantic color used sparingly.",
+      "Clear page structure and compact, consistent controls.",
+      "Border and tonal hierarchy before shadow.",
+      "Document-centered workspaces with persistent context and actions.",
+      "Accessible states communicated by text, shape, and icon as well as color."
+    ],
+    "rules": [
+      { "name": "The Work Before Decoration Rule", "body": "Every visual element must improve orientation, comprehension, input, comparison, or feedback. If it does none of those jobs, remove it.", "section": "overview" },
+      { "name": "The Semantic Color Rule", "body": "A colored element must communicate focus, status, validation, or action. Do not add color merely to make a neutral screen feel more exciting.", "section": "colors" },
+      { "name": "The Status Is More Than Color Rule", "body": "Every status treatment includes a text label and, where space permits, a distinct icon or marker. Color alone never carries lifecycle meaning.", "section": "colors" },
+      { "name": "The Sentence Case Rule", "body": "Use sentence case for headings, actions, navigation, table headers, and badges. Avoid all caps and headline-style title casing.", "section": "typography" },
+      { "name": "The One Headline Rule", "body": "Each screen has one page headline. Panels beneath it step down predictably; they do not compete at the same visual size.", "section": "typography" },
+      { "name": "The Stable Workspace Rule", "body": "Loading, validation, and mode changes must not reflow the entire page. Reserve space for feedback and preserve the user's scroll position whenever possible.", "section": "layout" },
+      { "name": "The Flat-by-Default Rule", "body": "If a border or tonal change can communicate the layer, do not add a shadow.", "section": "elevation" },
+      { "name": "The Pills Are Metadata Rule", "body": "Reserve fully rounded shapes for status, filters, and compact metadata. Buttons, cards, fields, and navigation items do not become pills.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do make the author journey—templates, placeholders, document, preview, save—the clearest path through the shell.",
+      "Do use stable alignment, concise labels, and persistent state feedback to make multi-step work feel trustworthy.",
+      "Do use semantic shadcn variants and shared Tailwind tokens so form, table, navigation, and status behavior stays consistent.",
+      "Do keep template-version and lifecycle context visible when it affects what the user can edit or finalize.",
+      "Do design empty, loading, validation, permission, and read-only states at the same time as the default state.",
+      "Do preserve document content as the dominant visual object in editor and preview screens."
+    ],
+    "donts": [
+      "Don't use hero sections, oversized slogans, promotional statistics, testimonials, or other marketing-site composition inside the application.",
+      "Don't use gradients, glass effects, ornamental illustration, decorative animation, or large areas of semantic color.",
+      "Don't turn every object into a floating card; prefer lists, tables, panels, and direct page structure according to the task.",
+      "Don't communicate Draft, Current, Published, Active, Inactive, or Finalized through color alone.",
+      "Don't introduce unapproved workflows such as sharing, collaboration, comments, approval chains, autosave guarantees, or export formats.",
+      "Don't let admin density or controls leak into the primary author workflow.",
+      "Don't allow UI affordances to imply that published versions, source templates, or finalized documents are editable in place."
+    ]
+  }
+}
+
