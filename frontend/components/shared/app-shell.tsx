@@ -13,6 +13,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/features/auth/auth-provider";
 
 const navigation = [
   { href: "/templates", label: "Templates", icon: Files },
@@ -60,14 +61,19 @@ function Navigation({ pathname, onNavigate }: { pathname: string; onNavigate?: (
 }
 
 function UserIdentity() {
+  const { session } = useAuth();
+  const user = session?.user;
+
   return (
     <div className="flex items-center gap-3 border-t px-3 pt-4">
       <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <UserRound aria-hidden="true" className="size-4" />
       </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">Maya Chen</p>
-        <p className="text-xs text-muted-foreground">Author workspace</p>
+        <p className="truncate text-sm font-medium">{user?.fullName ?? "Signed-in user"}</p>
+        <p className="text-xs text-muted-foreground">
+          {user?.role === "Admin" ? "Admin workspace" : "Author workspace"}
+        </p>
       </div>
     </div>
   );

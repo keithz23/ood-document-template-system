@@ -76,14 +76,12 @@ These points must not be silently encoded into entities or persistence:
    `Html`. The API contract uses `contentFormat: "Html"`. The exact editor and
    token-to-Composite parsing mechanism remains unresolved and is not defined
    here.
-10. **Download format:** Download is present in the mock, but `DESIGN.md`
-    explicitly leaves PDF, DOCX, HTML, and other formats unresolved. The route
-    is reserved below, but its success media type, filename extension, and
-    renderer are **not implementable until a format is approved**.
-11. **Download lifecycle:** the mock enables Download only for Finalized
-    documents. The approved business rules do not explicitly say drafts cannot
-    be downloaded. This contract does not add that backend restriction. The
-    question must be decided with the export format.
+10. **Download format (resolved):** HTML is the only approved MVP export
+    format. Downloads use the `.html` extension and
+    `text/html; charset=utf-8`. PDF and DOCX are outside this slice.
+11. **Download lifecycle (resolved):** both Draft and Finalized documents may
+    be downloaded. The mock's former Finalized-only presentation is not a
+    business rule.
 12. **User identity:** the shell hard-codes a user name and does not implement
     authentication UI. `/api/auth/me` supplies the real shell identity.
 
@@ -355,7 +353,7 @@ approved model; it is not a new Document entity field.
 | Current-version placeholders | `GET` | `/api/template-versions/{templateVersionId}/placeholders` |
 | Create draft | `POST` | `/api/documents` |
 | Load document | `GET` | `/api/documents/{documentId}` |
-| Update draft | `PUT` | `/api/documents/{documentId}` |
+| Update draft | `PATCH` | `/api/documents/{documentId}` |
 | Preview draft | `POST` | `/api/documents/{documentId}/preview` |
 | Finalize document | `POST` | `/api/documents/{documentId}/finalize` |
 | Download document | `GET` | `/api/documents/{documentId}/download` |
@@ -766,7 +764,7 @@ Authorization: Bearer <access-token>
 
 ### 7.3 Update draft document
 
-**Method and path:** `PUT /api/documents/{documentId}`
+**Method and path:** `PATCH /api/documents/{documentId}`
 
 **Authorization:** Bearer token; caller must own the document.
 
@@ -794,9 +792,13 @@ Authorization: Bearer <access-token>
 **Validation and business rules**
 
 - Document must exist, belong to the caller, and have status `Draft`.
-- `title` must be non-empty after trimming.
-- `content` is required and represents the independent Document copy; updating
+- At least one of `title`, `content`, or `placeholderValues` must be present.
+- Omitted properties retain their currently persisted values.
+- When supplied, `title` must be non-empty after trimming.
+- When supplied, `content` represents the independent Document copy; updating
   it never changes TemplateVersion content.
+- When supplied, `placeholderValues` is the complete set of values to retain;
+  an empty array clears the Draft's stored placeholder values.
 - Placeholder IDs must belong to the retained source TemplateVersion.
 - Duplicate or unknown Placeholder IDs are rejected.
 - Required placeholder values may be absent or empty while the document remains
@@ -814,7 +816,7 @@ Authorization: Bearer <access-token>
 **Example request:** The request DTO above is the example JSON body for:
 
 ```http
-PUT /api/documents/b4382058-feb4-4cd4-b8bf-627a13822161 HTTP/1.1
+PATCH /api/documents/b4382058-feb4-4cd4-b8bf-627a13822161 HTTP/1.1
 Authorization: Bearer <access-token>
 Content-Type: application/json
 ```
@@ -1014,14 +1016,9 @@ Content-Type: application/json
 - `MISSING_REQUIRED_PLACEHOLDER` (`422`)
 - `INVALID_PLACEHOLDER_VALUE` (`422`)
 
-### 7.6 Download document — reserved contract
+### 7.6 Download document
 
 **Method and path:** `GET /api/documents/{documentId}/download`
-
-**Implementation status:** **Blocked by the unresolved export-format decision.**
-Do not implement this endpoint until PDF, DOCX, HTML, or another exact format is
-approved. Implementing `application/octet-stream` as a hidden default would
-silently choose export semantics and is not approved.
 
 **Authorization:** Bearer token; caller must own the document.
 
@@ -1032,25 +1029,28 @@ invented before supported formats are approved.
 
 **Request DTO:** None.
 
-**Response DTO:** No JSON DTO on success. The eventual success response is a
-binary file result with:
+**Response DTO:** No JSON DTO on success. The success response is an HTML file
+with:
 
 ```http
-Content-Type: <pending approved export media type>
-Content-Disposition: attachment; filename*=UTF-8''<safe-title>.<pending-extension>
+Content-Type: text/html; charset=utf-8
+Content-Disposition: attachment; filename*=UTF-8''<safe-title>.html
 ```
 
 JSON failures still use `ErrorResponseDto`.
 
-**Validation and business rules currently known**
+**Validation and business rules**
 
 - Document must exist and be authorized for the caller.
 - Export must use the Document's stored independent content and stored
   placeholder snapshots, never the latest TemplateVersion.
-- The permitted lifecycle state is unresolved; the mock's Finalized-only rule
-  is not promoted to a backend rule here.
+- Both Draft and Finalized documents may be downloaded.
+- Placeholder tokens are rendered from the Document's stored snapshot values.
+- HTML is the only approved MVP export format. PDF and DOCX are not supported.
+- The filename is derived from the title, made safe for a download filename,
+  and uses the `.html` extension.
 
-**HTTP status codes after the format is approved:** `200 OK`,
+**HTTP status codes:** `200 OK`,
 `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`,
 `422 Unprocessable Entity`, `500 Internal Server Error`.
 
@@ -1065,15 +1065,14 @@ Authorization: Bearer <access-token>
 
 ```http
 HTTP/1.1 200 OK
-Content-Type: <pending approved export media type>
-Content-Disposition: attachment; filename*=UTF-8''Acme-consulting-agreement.<pending-extension>
+Content-Type: text/html; charset=utf-8
+Content-Disposition: attachment; filename*=UTF-8''Acme-consulting-agreement.html
 
-<binary body in the approved format>
+<h1>Professional services agreement</h1><p>This agreement is made on 2026-09-30 between Northstar Studio and Acme Industries.</p>
 ```
 
-**Error cases currently known:** `DOCUMENT_NOT_FOUND` (`404`),
-`UNAUTHORIZED_DOCUMENT_ACCESS` (`403`), `EXPORT_FAILED` (`422`). Exact
-format-specific validation remains pending.
+**Error cases:** `DOCUMENT_NOT_FOUND` (`404`),
+`UNAUTHORIZED_DOCUMENT_ACCESS` (`403`), `EXPORT_FAILED` (`422`).
 
 ### 7.7 List document history
 
@@ -1147,7 +1146,7 @@ transport contracts to mirror the existing mocks:
 | `PlaceholderDefinition.example` | Remove; use only approved `defaultValue` |
 | `Record<string,string>` values | Adapt from/to placeholder-value arrays by ID |
 | Local Draft creation | Call `POST /api/documents` before editing the clone |
-| Local Save Draft | Call `PUT /api/documents/{documentId}` |
+| Local Save Draft | Call `PATCH /api/documents/{documentId}` |
 | Local Preview substitution | Call the non-mutating preview endpoint |
 | Local Finalize state change | Call the atomic finalize endpoint |
 | Hard-coded shell user | Load `GET /api/auth/me` |
@@ -1166,6 +1165,6 @@ This contract does not define:
 - autosave guarantees, bulk operations, server sorting, pagination, or search;
 - template mutation or editing Published versions;
 - an editor technology or a JSON content editor;
-- an export/download format.
+- PDF or DOCX export.
 
 Those capabilities require separate approval and contract work.

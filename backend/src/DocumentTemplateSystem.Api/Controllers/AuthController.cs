@@ -23,4 +23,14 @@ public sealed class AuthController(AuthenticationService authenticationService)
     {
         return Ok(await authenticationService.LoginAsync(request, cancellationToken));
     }
+
+    [Authorize(Roles = "User,Admin")]
+    [HttpGet("me")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<UserDto>> Me(CancellationToken cancellationToken)
+    {
+        return Ok(await authenticationService.GetCurrentUserAsync(cancellationToken));
+    }
 }

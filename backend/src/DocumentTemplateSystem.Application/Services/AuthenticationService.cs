@@ -7,7 +7,8 @@ namespace DocumentTemplateSystem.Application.Services;
 public sealed class AuthenticationService(
     IUserRepository userRepository,
     IPasswordHashService passwordHashService,
-    IAccessTokenGenerator accessTokenGenerator)
+    IAccessTokenGenerator accessTokenGenerator,
+    ICurrentUserContext currentUserContext)
 {
     public async Task<LoginResponseDto> LoginAsync(
         LoginRequestDto request,
@@ -61,5 +62,25 @@ public sealed class AuthenticationService(
                 user.FullName,
                 user.Email,
                 user.Role));
+    }
+
+    public async Task<UserDto> GetCurrentUserAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var user = await userRepository.GetByIdAsync(
+            currentUserContext.UserId,
+            cancellationToken);
+
+        if (user is null || !user.IsActive)
+        {
+            throw UseCaseException.AuthenticationRequired();
+        }
+
+        return new UserDto(
+            user.Id,
+            user.Username,
+            user.FullName,
+            user.Email,
+            user.Role);
     }
 }

@@ -7,37 +7,38 @@ import { EmptyState } from "@/components/shared/data-state";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { TemplateCategory, TemplateSummary } from "@/types/mock-data";
-
-const categories: readonly (TemplateCategory | "All templates")[] = [
-  "All templates",
-  "Business",
-  "Finance",
-  "Human resources",
-  "Operations",
-];
+import type { TemplateGalleryItemDto } from "@/types/api";
 
 export function TemplateGallery({
   templates,
 }: {
-  templates: readonly TemplateSummary[];
+  templates: readonly TemplateGalleryItemDto[];
 }) {
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<TemplateCategory | "All templates">(
-    "All templates",
+  const [categoryId, setCategoryId] = useState("all");
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          templates.map((template) => [
+            template.category.id,
+            template.category,
+          ]),
+        ).values(),
+      ).sort((left, right) => left.name.localeCompare(right.name)),
+    [templates],
   );
   const visibleTemplates = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
     return templates.filter((template) => {
       const matchesCategory =
-        category === "All templates" || template.category === category;
+        categoryId === "all" || template.category.id === categoryId;
       const matchesQuery =
         normalizedQuery.length === 0 ||
-        template.name.toLocaleLowerCase().includes(normalizedQuery) ||
-        template.description.toLocaleLowerCase().includes(normalizedQuery);
+        template.name.toLocaleLowerCase().includes(normalizedQuery);
       return matchesCategory && matchesQuery;
     });
-  }, [category, query, templates]);
+  }, [categoryId, query, templates]);
 
   return (
     <div className="space-y-6">
@@ -51,23 +52,22 @@ export function TemplateGallery({
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by template name or purpose"
+            placeholder="Search by template name"
             className="h-10 pl-9"
           />
         </label>
         <label className="sm:w-52">
           <span className="sr-only">Filter by category</span>
           <select
-            value={category}
-            onChange={(event) =>
-              setCategory(
-                event.target.value as TemplateCategory | "All templates",
-              )
-            }
+            value={categoryId}
+            onChange={(event) => setCategoryId(event.target.value)}
             className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
           >
+            <option value="all">All templates</option>
             {categories.map((option) => (
-              <option key={option}>{option}</option>
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
             ))}
           </select>
         </label>
@@ -93,7 +93,7 @@ export function TemplateGallery({
                   <FileText aria-hidden="true" className="size-5" />
                 </span>
                 <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                  {template.category}
+                  {template.category.name}
                 </span>
               </div>
               <h2 className="mt-5 text-base font-semibold leading-6 tracking-[-0.01em]">
@@ -104,20 +104,17 @@ export function TemplateGallery({
                   {template.name}
                 </Link>
               </h2>
-              <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
-                {template.description}
-              </p>
               <dl className="mt-auto flex items-center gap-3 pt-6 text-xs text-muted-foreground">
                 <div className="flex gap-1">
                   <dt>Version</dt>
                   <dd className="font-medium text-foreground">
-                    {template.versionNumber}
+                    {template.currentVersion.versionNumber}
                   </dd>
                 </div>
                 <span aria-hidden="true">·</span>
                 <div>
                   <dt className="sr-only">Placeholder count</dt>
-                  <dd>{template.placeholderCount} fields</dd>
+                  <dd>{template.currentVersion.placeholderCount} fields</dd>
                 </div>
               </dl>
               <Link

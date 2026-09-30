@@ -118,6 +118,22 @@ public sealed class Document
         return existingValue;
     }
 
+    public IReadOnlyList<DocumentPlaceholderValue> RemovePlaceholderValuesExcept(
+        IReadOnlyCollection<Guid> placeholderIds,
+        DateTimeOffset? updatedAt = null)
+    {
+        EnsureDraft();
+        ArgumentNullException.ThrowIfNull(placeholderIds);
+        var retainedIds = placeholderIds.ToHashSet();
+        var removed = _placeholderValues
+            .Where(value => value.PlaceholderId is not Guid placeholderId
+                || !retainedIds.Contains(placeholderId))
+            .ToArray();
+        _placeholderValues.RemoveAll(removed.Contains);
+        UpdatedAt = updatedAt ?? DateTimeOffset.UtcNow;
+        return removed;
+    }
+
     public void Finalize(DateTimeOffset? finalizedAt = null)
     {
         EnsureDraft();

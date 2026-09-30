@@ -7,19 +7,25 @@ import { EmptyState } from "@/components/shared/data-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { DocumentRecord, DocumentStatus } from "@/types/mock-data";
+import type { DocumentStatus, DocumentSummaryDto } from "@/types/api";
 
 type Filter = "All" | DocumentStatus;
 const filters: readonly Filter[] = ["All", "Draft", "Finalized"];
 
-export function DocumentHistory({ documents }: { documents: readonly DocumentRecord[] }) {
+const dateFormatter = new Intl.DateTimeFormat("en", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
+export function DocumentHistory({ documents }: { documents: readonly DocumentSummaryDto[] }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("All");
   const visibleDocuments = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
     return documents.filter((document) => {
       const matchesFilter = filter === "All" || document.status === filter;
-      const matchesQuery = normalizedQuery.length === 0 || document.title.toLocaleLowerCase().includes(normalizedQuery) || document.templateName.toLocaleLowerCase().includes(normalizedQuery);
+      const matchesQuery = normalizedQuery.length === 0 || document.title.toLocaleLowerCase().includes(normalizedQuery) || document.source.templateName.toLocaleLowerCase().includes(normalizedQuery);
       return matchesFilter && matchesQuery;
     });
   }, [documents, filter, query]);
@@ -62,10 +68,10 @@ export function DocumentHistory({ documents }: { documents: readonly DocumentRec
               <tbody className="divide-y">
                 {visibleDocuments.map((document) => (
                   <tr key={document.id} className="group hover:bg-muted/35">
-                    <td className="px-5 py-4"><Link href={`/documents/${document.id}`} className="font-medium outline-none group-hover:underline group-hover:underline-offset-4 focus-visible:ring-3 focus-visible:ring-ring/40">{document.title}</Link><p className="mt-1 text-xs text-muted-foreground">Created {document.createdAt}</p></td>
-                    <td className="px-4 py-4 text-muted-foreground">{document.templateName}<span className="block text-xs">Version {document.templateVersion}</span></td>
+                    <td className="px-5 py-4"><Link href={`/documents/${document.id}`} className="font-medium outline-none group-hover:underline group-hover:underline-offset-4 focus-visible:ring-3 focus-visible:ring-ring/40">{document.title}</Link><p className="mt-1 text-xs text-muted-foreground">Created {dateFormatter.format(new Date(document.createdAt))}</p></td>
+                    <td className="px-4 py-4 text-muted-foreground">{document.source.templateName}<span className="block text-xs">Version {document.source.versionNumber}</span></td>
                     <td className="px-4 py-4"><StatusBadge status={document.status} /></td>
-                    <td className="px-4 py-4 tabular-nums text-muted-foreground">{document.updatedAt}</td>
+                    <td className="px-4 py-4 tabular-nums text-muted-foreground">{dateFormatter.format(new Date(document.updatedAt))}</td>
                     <td className="px-4 py-4"><Link href={`/documents/${document.id}`} aria-label={`Open ${document.title}`} className="flex size-9 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/40"><ArrowUpRight aria-hidden="true" className="size-4" /></Link></td>
                   </tr>
                 ))}
@@ -76,8 +82,8 @@ export function DocumentHistory({ documents }: { documents: readonly DocumentRec
           <div className="space-y-3 md:hidden">
             {visibleDocuments.map((document) => (
               <article key={document.id} className="rounded-xl border bg-card p-4">
-                <div className="flex items-start gap-3"><span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><FileText aria-hidden="true" className="size-4" /></span><div className="min-w-0 flex-1"><Link href={`/documents/${document.id}`} className="font-medium leading-6 underline-offset-4 hover:underline">{document.title}</Link><p className="mt-1 text-sm text-muted-foreground">{document.templateName} · v{document.templateVersion}</p></div><StatusBadge status={document.status} /></div>
-                <div className="mt-4 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground"><span>Updated {document.updatedAt}</span><Link href={`/documents/${document.id}`} className="inline-flex min-h-9 items-center gap-1 rounded-md px-2 font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40">Open<ArrowUpRight aria-hidden="true" className="size-3.5" /></Link></div>
+                <div className="flex items-start gap-3"><span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><FileText aria-hidden="true" className="size-4" /></span><div className="min-w-0 flex-1"><Link href={`/documents/${document.id}`} className="break-words font-medium leading-6 underline-offset-4 hover:underline">{document.title}</Link><p className="mt-1 text-sm text-muted-foreground">{document.source.templateName} · v{document.source.versionNumber}</p></div><StatusBadge status={document.status} /></div>
+                <div className="mt-4 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground"><span>Updated {dateFormatter.format(new Date(document.updatedAt))}</span><Link href={`/documents/${document.id}`} className="inline-flex min-h-9 items-center gap-1 rounded-md px-2 font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40">Open<ArrowUpRight aria-hidden="true" className="size-3.5" /></Link></div>
               </article>
             ))}
           </div>

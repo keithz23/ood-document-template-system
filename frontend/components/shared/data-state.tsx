@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { AlertCircle, FileQuestion, RotateCcw } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -57,8 +59,9 @@ export function EmptyState({
 
 export function ErrorState({
   title = "We couldn’t load this page",
-  description = "The mocked content could not be displayed. Try loading the page again.",
-}: Readonly<{ title?: string; description?: string }>) {
+  description = "The requested content could not be displayed. Try loading it again.",
+  onRetry,
+}: Readonly<{ title?: string; description?: string; onRetry?: () => void }>) {
   return (
     <section role="alert" className="flex min-h-80 flex-col items-center justify-center rounded-xl border bg-card px-6 py-12 text-center">
       <div className="flex size-10 items-center justify-center rounded-lg bg-red-50 text-red-700">
@@ -66,10 +69,17 @@ export function ErrorState({
       </div>
       <h2 className="mt-4 text-base font-semibold">{title}</h2>
       <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
-      <Link href="?" className={cn(buttonVariants({ variant: "outline" }), "mt-5 min-h-9 px-3")}>
-        <RotateCcw aria-hidden="true" className="size-4" />
-        Try again
-      </Link>
+      {onRetry ? (
+        <Button type="button" variant="outline" className="mt-5" onClick={onRetry}>
+          <RotateCcw aria-hidden="true" className="size-4" />
+          Try again
+        </Button>
+      ) : (
+        <Link href="?" className={cn(buttonVariants({ variant: "outline" }), "mt-5 min-h-9 px-3")}>
+          <RotateCcw aria-hidden="true" className="size-4" />
+          Try again
+        </Link>
+      )}
     </section>
   );
 }

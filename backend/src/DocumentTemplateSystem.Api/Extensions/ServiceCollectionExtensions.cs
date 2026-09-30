@@ -79,6 +79,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AuthenticationService>();
         services.AddScoped<TemplateService>();
         services.AddScoped<DocumentService>();
+        services.AddSingleton<IDocumentRenderer, HtmlDocumentRenderer>();
         services.AddSingleton<PlaceholderValidator>();
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -141,7 +142,8 @@ public static class ServiceCollectionExtensions
                 policy
                     .WithOrigins(allowedOrigins)
                     .AllowAnyHeader()
-                    .AllowAnyMethod();
+                    .AllowAnyMethod()
+                    .WithExposedHeaders("Content-Disposition");
             });
         });
 

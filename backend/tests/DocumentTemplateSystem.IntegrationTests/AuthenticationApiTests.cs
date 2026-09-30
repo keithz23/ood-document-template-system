@@ -118,6 +118,27 @@ public sealed class AuthenticationApiTests : IClassFixture<AuthenticationApiFact
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Me_WithValidToken_ReturnsAuthenticatedUser()
+    {
+        using var client = _factory.CreateClient();
+        var loginResponse = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequestDto("author", AuthenticationApiFactory.UserPassword),
+            JsonOptions);
+        var login = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDto>(JsonOptions);
+        Assert.NotNull(login);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        var user = await client.GetFromJsonAsync<UserDto>("/api/auth/me", JsonOptions);
+
+        Assert.NotNull(user);
+        Assert.Equal(login.User.Id, user.Id);
+        Assert.Equal("author", user.Username);
+        Assert.Equal(UserRole.User, user.Role);
+    }
+
     private static async Task AssertInvalidCredentialsAsync(HttpResponseMessage response)
     {
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -215,6 +236,13 @@ public sealed class AuthenticationApiFactory : WebApplicationFactory<Program>
     private sealed class InMemoryUserRepository(IReadOnlyList<User> users)
         : IUserRepository
     {
+        public Task<User?> GetByIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(users.SingleOrDefault(user => user.Id == userId));
+        }
+
         public Task<User?> FindByUsernameOrEmailAsync(
             string usernameOrEmail,
             CancellationToken cancellationToken = default)

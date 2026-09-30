@@ -7,6 +7,15 @@ namespace DocumentTemplateSystem.Infrastructure.Repositories;
 
 public sealed class UserRepository(AppDbContext context) : IUserRepository
 {
+    public Task<User?> GetByIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        return context.Users
+            .AsNoTracking()
+            .SingleOrDefaultAsync(user => user.Id == userId, cancellationToken);
+    }
+
     public Task<User?> FindByUsernameOrEmailAsync(
         string usernameOrEmail,
         CancellationToken cancellationToken = default)

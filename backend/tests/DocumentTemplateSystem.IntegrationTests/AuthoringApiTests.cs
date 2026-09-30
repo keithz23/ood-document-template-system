@@ -84,6 +84,7 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
     [Fact]
     public async Task CreateDraft_Returns201LocationAndPrototypeCopy()
     {
+        _factory.DocumentRepository.Reset();
         using var client = CreateAuthenticatedClient();
         var request = new CreateDraftDocumentRequestDto(
             _factory.TemplateVersionId,
@@ -132,8 +133,9 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             await client.GetStringAsync("/swagger/v1/swagger.json"));
         var paths = document.RootElement.GetProperty("paths");
 
-        Assert.Equal(6, paths.EnumerateObject().Count());
+        Assert.Equal(11, paths.EnumerateObject().Count());
         Assert.True(paths.TryGetProperty("/api/auth/login", out var loginPath));
+        Assert.True(paths.TryGetProperty("/api/auth/me", out _));
         Assert.True(paths.TryGetProperty("/api/templates", out _));
         Assert.True(paths.TryGetProperty("/api/templates/{templateId}", out _));
         Assert.True(paths.TryGetProperty(
@@ -143,6 +145,11 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             "/api/template-versions/{templateVersionId}/placeholders",
             out _));
         Assert.True(paths.TryGetProperty("/api/documents", out _));
+        Assert.True(paths.TryGetProperty("/api/documents/{documentId}", out var documentPath));
+        Assert.True(documentPath.TryGetProperty("patch", out _));
+        Assert.True(paths.TryGetProperty("/api/documents/{documentId}/preview", out _));
+        Assert.True(paths.TryGetProperty("/api/documents/{documentId}/finalize", out _));
+        Assert.True(paths.TryGetProperty("/api/documents/{documentId}/download", out _));
 
         var bearer = document.RootElement
             .GetProperty("components")
@@ -151,6 +158,170 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.Equal("http", bearer.GetProperty("type").GetString());
         Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
         Assert.Empty(loginPath.GetProperty("post").GetProperty("security").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task DocumentWorkflow_LoadsUpdatesPreviewsFinalizesAndDownloadsOwnDocument()
+    {
+        _factory.DocumentRepository.Reset();
+        using var client = CreateAuthenticatedClient();
+        var document = await CreateDraftAsync(client, "Workflow agreement");
+
+        var loaded = await client.GetFromJsonAsync<DocumentDetailDto>(
+            $"/api/documents/{document.Id}",
+            JsonOptions);
+        Assert.Equal(document.Id, loaded?.Id);
+        Assert.Equal(TestAuthenticationHandler.UserId, _factory.DocumentRepository.Documents.Single().CreatedBy);
+
+        var placeholders = _factory.Placeholders;
+        var update = new UpdateDraftDocumentRequestDto(
+            "Updated agreement",
+            "<h1>Updated</h1><p>{{effective_date}} for {{client_name}}</p>",
+            [
+                new PlaceholderValueInputDto(placeholders[0].Id, "2026-10-01"),
+                new PlaceholderValueInputDto(placeholders[1].Id, "Acme & Partners")
+            ]);
+        using var patchRequest = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/documents/{document.Id}")
+        {
+            Content = JsonContent.Create(update, options: JsonOptions)
+        };
+        var patchResponse = await client.SendAsync(patchRequest);
+        Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
+        var updated = await patchResponse.Content.ReadFromJsonAsync<DocumentDetailDto>(JsonOptions);
+        Assert.Equal("Updated agreement", updated?.Title);
+        Assert.Equal(2, updated?.PlaceholderValues.Count);
+
+        var previewResponse = await client.PostAsJsonAsync(
+            $"/api/documents/{document.Id}/preview",
+            new PreviewDocumentRequestDto(update.Content!, update.PlaceholderValues!),
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, previewResponse.StatusCode);
+        var preview = await previewResponse.Content.ReadFromJsonAsync<PreviewDocumentResponseDto>(JsonOptions);
+        Assert.Contains("2026-10-01", preview?.RenderedContent);
+        Assert.Contains("Acme &amp; Partners", preview?.RenderedContent);
+
+        var finalizeResponse = await client.PostAsJsonAsync(
+            $"/api/documents/{document.Id}/finalize",
+            new FinalizeDocumentRequestDto(
+                update.Title!,
+                update.Content!,
+                update.PlaceholderValues!),
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, finalizeResponse.StatusCode);
+        var finalized = await finalizeResponse.Content.ReadFromJsonAsync<DocumentDetailDto>(JsonOptions);
+        Assert.Equal(DocumentStatus.Finalized, finalized?.Status);
+        Assert.NotNull(finalized?.FinalizedAt);
+
+        var history = await client.GetFromJsonAsync<DocumentSummaryDto[]>(
+            "/api/documents",
+            JsonOptions);
+        var historyItem = Assert.Single(history!);
+        Assert.Equal(document.Id, historyItem.Id);
+        Assert.Equal(DocumentStatus.Finalized, historyItem.Status);
+
+        var downloadResponse = await client.GetAsync($"/api/documents/{document.Id}/download");
+        Assert.Equal(HttpStatusCode.OK, downloadResponse.StatusCode);
+        Assert.Equal("text/html", downloadResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("utf-8", downloadResponse.Content.Headers.ContentType?.CharSet);
+        Assert.Equal("Updated-agreement.html", downloadResponse.Content.Headers.ContentDisposition?.FileNameStar);
+        Assert.Contains("Acme &amp; Partners", await downloadResponse.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task GetDocument_WhenOwnedByAnotherUser_ReturnsForbidden()
+    {
+        _factory.DocumentRepository.Reset();
+        using var ownerClient = CreateAuthenticatedClient();
+        var document = await CreateDraftAsync(ownerClient, "Private document");
+        using var otherClient = _factory.CreateClient();
+        otherClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(TestAuthenticationHandler.OtherAuthenticationScheme);
+
+        var response = await otherClient.GetAsync($"/api/documents/{document.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>(JsonOptions);
+        Assert.Equal("UNAUTHORIZED_DOCUMENT_ACCESS", error?.Code);
+    }
+
+    [Fact]
+    public async Task Preview_WithMissingRequiredValues_ReturnsUnprocessableEntity()
+    {
+        _factory.DocumentRepository.Reset();
+        using var client = CreateAuthenticatedClient();
+        var document = await CreateDraftAsync(client, "Incomplete agreement");
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/documents/{document.Id}/preview",
+            new PreviewDocumentRequestDto(document.Content, []),
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>(JsonOptions);
+        Assert.Equal("MISSING_REQUIRED_PLACEHOLDER", error?.Code);
+        Assert.Equal(2, error?.Errors?.Count);
+    }
+
+    [Fact]
+    public async Task FinalizedDocument_RejectsFurtherUpdatesAndFinalization()
+    {
+        _factory.DocumentRepository.Reset();
+        using var client = CreateAuthenticatedClient();
+        var document = await CreateDraftAsync(client, "Final agreement");
+        var values = new[]
+        {
+            new PlaceholderValueInputDto(_factory.Placeholders[0].Id, "2026-10-01"),
+            new PlaceholderValueInputDto(_factory.Placeholders[1].Id, "Acme")
+        };
+        var finalized = await client.PostAsJsonAsync(
+            $"/api/documents/{document.Id}/finalize",
+            new FinalizeDocumentRequestDto(document.Title, document.Content, values),
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, finalized.StatusCode);
+
+        using var patchRequest = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/documents/{document.Id}")
+        {
+            Content = JsonContent.Create(
+                new UpdateDraftDocumentRequestDto("Changed", null, null),
+                options: JsonOptions)
+        };
+        var patchResponse = await client.SendAsync(patchRequest);
+        Assert.Equal(HttpStatusCode.Conflict, patchResponse.StatusCode);
+
+        var secondFinalize = await client.PostAsJsonAsync(
+            $"/api/documents/{document.Id}/finalize",
+            new FinalizeDocumentRequestDto("Changed", document.Content, values),
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Conflict, secondFinalize.StatusCode);
+        var error = await secondFinalize.Content.ReadFromJsonAsync<ErrorResponseDto>(JsonOptions);
+        Assert.Equal("DOCUMENT_FINALIZED", error?.Code);
+    }
+
+    [Fact]
+    public async Task Download_AllowsDraftDocuments()
+    {
+        _factory.DocumentRepository.Reset();
+        using var client = CreateAuthenticatedClient();
+        var document = await CreateDraftAsync(client, "Draft export");
+
+        var response = await client.GetAsync($"/api/documents/{document.Id}/download");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    private async Task<DocumentDetailDto> CreateDraftAsync(HttpClient client, string title)
+    {
+        var response = await client.PostAsJsonAsync(
+            "/api/documents",
+            new CreateDraftDocumentRequestDto(_factory.TemplateVersionId, title),
+            JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<DocumentDetailDto>(JsonOptions))!;
     }
 
     private HttpClient CreateAuthenticatedClient()
@@ -209,7 +380,8 @@ public sealed class AuthoringApiFactory : WebApplicationFactory<Program>
             version,
             template,
             version.Placeholders.ToArray());
-        DocumentRepository = new InMemoryDocumentRepository();
+        Placeholders = version.Placeholders.ToArray();
+        DocumentRepository = new InMemoryDocumentRepository(template, version);
     }
 
     public Guid TemplateId { get; }
@@ -217,6 +389,8 @@ public sealed class AuthoringApiFactory : WebApplicationFactory<Program>
     public Guid TemplateVersionId { get; }
 
     public string TemplateContent { get; }
+
+    public IReadOnlyList<Placeholder> Placeholders { get; }
 
     public InMemoryDocumentRepository DocumentRepository { get; }
 
@@ -276,14 +450,51 @@ public sealed class AuthoringApiFactory : WebApplicationFactory<Program>
     }
 }
 
-public sealed class InMemoryDocumentRepository : IDocumentRepository
+public sealed class InMemoryDocumentRepository(
+    Template template,
+    TemplateVersion version) : IDocumentRepository
 {
     public List<Document> Documents { get; } = [];
+
+    public void Reset() => Documents.Clear();
 
     public Task AddAsync(Document document, CancellationToken cancellationToken = default)
     {
         Documents.Add(document);
         return Task.CompletedTask;
+    }
+
+    public Task<DocumentEntry?> GetByIdAsync(
+        Guid documentId,
+        CancellationToken cancellationToken = default)
+    {
+        var document = Documents.SingleOrDefault(candidate => candidate.Id == documentId);
+        return Task.FromResult(document is null
+            ? null
+            : new DocumentEntry(document, template, version, version.Placeholders.ToArray()));
+    }
+
+    public Task<IReadOnlyList<DocumentEntry>> GetByOwnerAsync(
+        Guid ownerId,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<DocumentEntry> entries = Documents
+            .Where(document => document.CreatedBy == ownerId)
+            .Select(document => new DocumentEntry(
+                document,
+                template,
+                version,
+                version.Placeholders.ToArray()))
+            .ToArray();
+        return Task.FromResult(entries);
+    }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
+    public void RemovePlaceholderValues(
+        IReadOnlyCollection<DocumentPlaceholderValue> placeholderValues)
+    {
     }
 }
 
@@ -294,19 +505,24 @@ public sealed class TestAuthenticationHandler(
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string AuthenticationScheme = "Test";
+    public const string OtherAuthenticationScheme = "Other";
     public static readonly Guid UserId = Guid.Parse("66c7e543-7a25-46fb-92bc-40d6464f9c3d");
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue("Authorization", out var authorization)
-            || !string.Equals(authorization, AuthenticationScheme, StringComparison.Ordinal))
+            || (authorization != AuthenticationScheme
+                && authorization != OtherAuthenticationScheme))
         {
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
+        var userId = authorization == OtherAuthenticationScheme
+            ? Guid.Parse("15dbaf8b-cc8c-447c-b0a8-6dc076fb8e7c")
+            : UserId;
         Claim[] claims =
         [
-            new(ClaimTypes.NameIdentifier, UserId.ToString()),
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(ClaimTypes.Role, "User")
         ];
         var identity = new ClaimsIdentity(claims, AuthenticationScheme);

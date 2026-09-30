@@ -36,8 +36,11 @@ public sealed class SectionComponent : DocumentComponent
 
     public override string Render()
     {
-        return $"<section>{string.Concat(_children.Select(child => child.Render()))}</section>";
+        return $"<section>{RenderChildren()}</section>";
     }
+
+    public string RenderChildren() =>
+        string.Concat(_children.Select(child => child.Render()));
 
     public override DocumentComponent Clone()
     {
