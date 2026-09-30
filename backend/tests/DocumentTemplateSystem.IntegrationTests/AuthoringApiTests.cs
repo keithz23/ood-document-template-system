@@ -124,7 +124,7 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
     }
 
     [Fact]
-    public async Task Swagger_DescribesOnlyTheFivePhase3BOperationsWithBearerSecurity()
+    public async Task Swagger_DescribesLoginAndPhase3BOperationsWithBearerSecurity()
     {
         using var client = _factory.CreateClient();
 
@@ -132,7 +132,8 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             await client.GetStringAsync("/swagger/v1/swagger.json"));
         var paths = document.RootElement.GetProperty("paths");
 
-        Assert.Equal(5, paths.EnumerateObject().Count());
+        Assert.Equal(6, paths.EnumerateObject().Count());
+        Assert.True(paths.TryGetProperty("/api/auth/login", out var loginPath));
         Assert.True(paths.TryGetProperty("/api/templates", out _));
         Assert.True(paths.TryGetProperty("/api/templates/{templateId}", out _));
         Assert.True(paths.TryGetProperty(
@@ -149,6 +150,7 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             .GetProperty("Bearer");
         Assert.Equal("http", bearer.GetProperty("type").GetString());
         Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
+        Assert.Empty(loginPath.GetProperty("post").GetProperty("security").EnumerateArray());
     }
 
     private HttpClient CreateAuthenticatedClient()

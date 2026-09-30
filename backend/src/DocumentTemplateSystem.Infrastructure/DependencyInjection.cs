@@ -1,4 +1,5 @@
 using DocumentTemplateSystem.Application.Interfaces;
+using DocumentTemplateSystem.Infrastructure.Authentication;
 using DocumentTemplateSystem.Infrastructure.Persistence;
 using DocumentTemplateSystem.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,12 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString));
         services.AddScoped<ITemplateRepository, TemplateRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddSingleton<IPasswordHashService, AspNetPasswordHashService>();
+        services.AddSingleton<IAccessTokenGenerator, JwtAccessTokenGenerator>();
+        services.AddSingleton(TimeProvider.System);
+        services.Configure<JwtOptions>(
+            configuration.GetSection(JwtOptions.SectionName));
 
         return services;
     }

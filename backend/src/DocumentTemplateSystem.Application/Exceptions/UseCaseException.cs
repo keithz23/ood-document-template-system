@@ -60,4 +60,10 @@ public sealed class UseCaseException : Exception
             UseCaseErrorKind.Unauthorized,
             "AUTHENTICATION_REQUIRED",
             "Authentication is required.");
+
+    public static UseCaseException InvalidCredentials() =>
+        new(
+            UseCaseErrorKind.Unauthorized,
+            "INVALID_CREDENTIALS",
+            "The supplied credentials are invalid.");
 }
