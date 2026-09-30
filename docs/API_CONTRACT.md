@@ -1,11 +1,12 @@
-# API Contract — First Authoring Vertical Slice
+# API Contract — Authoring and Phase 6A Administration
 
-Status: **design contract only; endpoints are not implemented**.
+Status: **approved implementation contract**.
 
 This document derives the minimum REST contract for the current author-facing
-frontend and the approved rules in `AGENTS.md` and `PRODUCT.md`. It deliberately
-excludes administration, sharing, collaboration, registration, password reset,
-token refresh, template mutation, and every other later-phase capability.
+frontend and the approved rules in `AGENTS.md` and `PRODUCT.md`. Phase 6A adds
+only Category and Template metadata administration; later administration,
+sharing, collaboration, registration, password reset, and token refresh remain
+outside the contract.
 
 `AGENTS.md` section 7 is the only approved domain-model source currently present
 in the repository. No separate ERD or Class Diagram file was found. If one is
@@ -17,7 +18,9 @@ added later and conflicts with this document, the decision priority in
 - Base path: `/api`
 - Media type for JSON: `application/json`
 - Authentication: JWT bearer token in `Authorization: Bearer <token>`
-- Protected roles in this slice: `User` and `Admin`
+- Protected authoring roles: `User` and `Admin`.
+- Paths under `/api/admin` require the `Admin` role. An authenticated `User`
+  receives `403 Forbidden`; an unauthenticated caller receives `401 Unauthorized`.
 - Admin receives ordinary user capabilities here. This contract does **not**
   grant Admin cross-user document access.
 - Dates and timestamps use ISO 8601. Timestamps are UTC, for example
@@ -1159,8 +1162,8 @@ This contract does not define:
 - registration, logout, refresh tokens, password reset, or profile editing;
 - inactive/draft template browsing for authors;
 - historical template-version browsing outside retained Document history;
-- category management or a standalone category endpoint;
-- admin template, version, placeholder, user, or audit-log endpoints;
+- template-version publishing or editing, placeholder administration, user
+  administration, or audit-log endpoints and UI;
 - sharing, comments, teams, collaboration, approval chains, or cross-user access;
 - autosave guarantees, bulk operations, server sorting, pagination, or search;
 - template mutation or editing Published versions;
@@ -1168,3 +1171,416 @@ This contract does not define:
 - PDF or DOCX export.
 
 Those capabilities require separate approval and contract work.
+
+## 10. Phase 6A admin DTOs
+
+Admin DTOs remain separate from domain entities. `Template` creation produces
+the approved empty initial Draft `TemplateVersion` in `Html` format; Phase 6A
+does not expose content or version mutation.
+
+```text
+AdminCategoryDto
+  id: string
+  name: string
+  isActive: boolean
+  createdAt: string (ISO 8601 UTC)
+
+CreateCategoryRequestDto
+  name: string
+
+UpdateCategoryRequestDto
+  name: string
+
+AdminTemplateVersionSummaryDto
+  id: string
+  versionNumber: integer
+  status: "Draft" | "Published"
+  isCurrent: boolean
+  contentFormat: "Html" | "Json"
+  placeholderCount: integer
+  createdAt: string (ISO 8601 UTC)
+  updatedAt: string (ISO 8601 UTC)
+
+AdminTemplateSummaryDto
+  id: string
+  name: string
+  status: "Draft" | "Active" | "Inactive"
+  category: CategoryReferenceDto
+  createdAt: string (ISO 8601 UTC)
+  versionCount: integer
+  currentVersionNumber: integer | null
+
+AdminTemplateDetailDto
+  id: string
+  name: string
+  status: "Draft" | "Active" | "Inactive"
+  category: CategoryReferenceDto
+  createdAt: string (ISO 8601 UTC)
+  versions: AdminTemplateVersionSummaryDto[]
+
+CreateTemplateRequestDto
+  name: string
+  categoryId: string
+
+UpdateDraftTemplateRequestDto
+  name?: string
+  categoryId?: string
+```
+
+## 11. Category administration
+
+All endpoints in this section require a Bearer token with role `Admin`.
+Category state changes are soft changes; there is no delete endpoint.
+
+### 11.1 List categories
+
+**Method and path:** `GET /api/admin/categories`
+
+**Route/query parameters:** None. MVP search/filtering is client-side.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminCategoryDto[]`, ordered by name and including active
+and inactive categories.
+
+**Validation rules:** None beyond authentication and authorization.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`500 Internal Server Error`.
+
+**Example request**
+
+```http
+GET /api/admin/categories HTTP/1.1
+Authorization: Bearer <admin-access-token>
+```
+
+**Example response**
+
+```json
+[
+  {
+    "id": "5c67b0b0-bf84-42ea-b567-f0872a45ea52",
+    "name": "Business",
+    "isActive": true,
+    "createdAt": "2026-09-30T08:00:00Z"
+  }
+]
+```
+
+**Error cases:** `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 11.2 Create category
+
+**Method and path:** `POST /api/admin/categories`
+
+**Route/query parameters:** None.
+
+**Request DTO:** `CreateCategoryRequestDto`.
+
+**Response DTO:** `AdminCategoryDto`; the new category is active.
+
+**Validation rules:** `name` is required after trimming.
+
+**HTTP status codes:** `201 Created`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `500 Internal Server Error`.
+
+**Example request**
+
+```json
+{ "name": "Legal" }
+```
+
+**Example response**
+
+```json
+{
+  "id": "8395732d-0734-4cc0-8424-4d0b57482008",
+  "name": "Legal",
+  "isActive": true,
+  "createdAt": "2026-09-30T09:00:00Z"
+}
+```
+
+**Error cases:** `VALIDATION_ERROR` (`400`), `AUTHENTICATION_REQUIRED` (`401`),
+`FORBIDDEN` (`403`).
+
+### 11.3 Update category
+
+**Method and path:** `PATCH /api/admin/categories/{categoryId}`
+
+**Route parameters:** `categoryId` is the opaque Category identifier. No query
+parameters.
+
+**Request DTO:** `UpdateCategoryRequestDto`.
+
+**Response DTO:** updated `AdminCategoryDto`.
+
+**Validation rules:** `name` is required after trimming. Updating a category
+does not change its active state.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
+
+**Example request**
+
+```json
+{ "name": "Legal and compliance" }
+```
+
+**Example response**
+
+```json
+{
+  "id": "8395732d-0734-4cc0-8424-4d0b57482008",
+  "name": "Legal and compliance",
+  "isActive": true,
+  "createdAt": "2026-09-30T09:00:00Z"
+}
+```
+
+**Error cases:** `CATEGORY_NOT_FOUND` (`404`), `VALIDATION_ERROR` (`400`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 11.4 Activate category
+
+**Method and path:** `POST /api/admin/categories/{categoryId}/activate`
+
+**Route parameters:** `categoryId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminCategoryDto`.
+
+**Validation rules:** The operation is idempotent and does not alter Templates.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Example request:** `POST /api/admin/categories/8395732d-0734-4cc0-8424-4d0b57482008/activate`
+
+**Example response:** the `AdminCategoryDto` above with `isActive: true`.
+
+**Error cases:** `CATEGORY_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`).
+
+### 11.5 Deactivate category
+
+**Method and path:** `POST /api/admin/categories/{categoryId}/deactivate`
+
+**Route parameters:** `categoryId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminCategoryDto`.
+
+**Validation rules:** The operation is idempotent. It does not delete or
+deactivate related Templates and must not affect historical Documents.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Example request:** `POST /api/admin/categories/8395732d-0734-4cc0-8424-4d0b57482008/deactivate`
+
+**Example response:** the `AdminCategoryDto` above with `isActive: false`.
+
+**Error cases:** `CATEGORY_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`).
+
+## 12. Template administration
+
+All endpoints in this section require a Bearer token with role `Admin`.
+Templates are never hard-deleted. Content, TemplateVersion publication, and
+Placeholder administration remain outside Phase 6A.
+
+### 12.1 List templates
+
+**Method and path:** `GET /api/admin/templates`
+
+**Route/query parameters:** None. MVP search/filtering is client-side.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminTemplateSummaryDto[]`, ordered newest first and
+including Draft, Active, and Inactive Templates.
+
+**Validation rules:** None beyond authentication and authorization.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`500 Internal Server Error`.
+
+**Example request:** `GET /api/admin/templates` with an Admin Bearer token.
+
+**Example response**
+
+```json
+[
+  {
+    "id": "eb02cdda-021d-4b18-97cc-72c2a90d8618",
+    "name": "Professional services agreement",
+    "status": "Active",
+    "category": {
+      "id": "5c67b0b0-bf84-42ea-b567-f0872a45ea52",
+      "name": "Business"
+    },
+    "createdAt": "2026-09-28T08:00:00Z",
+    "versionCount": 3,
+    "currentVersionNumber": 3
+  }
+]
+```
+
+**Error cases:** `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 12.2 View template detail
+
+**Method and path:** `GET /api/admin/templates/{templateId}`
+
+**Route parameters:** `templateId`. No query parameters.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminTemplateDetailDto` including read-only version summaries.
+
+**Validation rules:** Draft and inactive Templates are visible to Admin.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Example request:** `GET /api/admin/templates/eb02cdda-021d-4b18-97cc-72c2a90d8618`
+
+**Example response**
+
+```json
+{
+  "id": "eb02cdda-021d-4b18-97cc-72c2a90d8618",
+  "name": "Professional services agreement",
+  "status": "Active",
+  "category": {
+    "id": "5c67b0b0-bf84-42ea-b567-f0872a45ea52",
+    "name": "Business"
+  },
+  "createdAt": "2026-09-28T08:00:00Z",
+  "versions": [
+    {
+      "id": "f70b6a83-39a2-47ba-9963-adc13a4e1eb3",
+      "versionNumber": 3,
+      "status": "Published",
+      "isCurrent": true,
+      "contentFormat": "Html",
+      "placeholderCount": 6,
+      "createdAt": "2026-09-28T08:00:00Z",
+      "updatedAt": "2026-09-28T08:42:00Z"
+    }
+  ]
+}
+```
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`).
+
+### 12.3 Create template
+
+**Method and path:** `POST /api/admin/templates`
+
+**Route/query parameters:** None.
+
+**Request DTO:** `CreateTemplateRequestDto`.
+
+**Response DTO:** `AdminTemplateDetailDto` with status `Draft` and one empty
+Draft version numbered `1` in `Html` format.
+
+**Validation rules:** `name` is required after trimming. `categoryId` must
+identify an existing Category.
+No Template content or Placeholder input is accepted in Phase 6A.
+
+**HTTP status codes:** `201 Created`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
+
+**Example request**
+
+```json
+{
+  "name": "Statement of work",
+  "categoryId": "5c67b0b0-bf84-42ea-b567-f0872a45ea52"
+}
+```
+
+**Example response:** an `AdminTemplateDetailDto` with `status: "Draft"` and
+one Draft entry in `versions`.
+
+**Error cases:** `CATEGORY_NOT_FOUND` (`404`), `VALIDATION_ERROR` (`400`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 12.4 Update Draft template metadata
+
+**Method and path:** `PATCH /api/admin/templates/{templateId}`
+
+**Route parameters:** `templateId`. No query parameters.
+
+**Request DTO:** `UpdateDraftTemplateRequestDto`.
+
+**Response DTO:** updated `AdminTemplateDetailDto`.
+
+**Validation rules:** At least one of `name` or `categoryId` is required.
+Provided names are trimmed and required. A provided `categoryId` must exist.
+Only a Template whose status is `Draft` may have its
+metadata updated; versions, content, and placeholders are not changed.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
+
+**Example request**
+
+```json
+{
+  "name": "Statement of work — standard",
+  "categoryId": "8395732d-0734-4cc0-8424-4d0b57482008"
+}
+```
+
+**Example response:** the updated `AdminTemplateDetailDto`.
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`), `CATEGORY_NOT_FOUND` (`404`),
+`TEMPLATE_NOT_DRAFT` (`409`), `VALIDATION_ERROR` (`400`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 12.5 Activate template
+
+**Method and path:** `POST /api/admin/templates/{templateId}/activate`
+
+**Route parameters:** `templateId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminTemplateDetailDto`.
+
+**Validation rules:** The Template must have a current Published
+TemplateVersion. Activation does not modify any TemplateVersion or Document.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
+
+**Example request:** `POST /api/admin/templates/eb02cdda-021d-4b18-97cc-72c2a90d8618/activate`
+
+**Example response:** the `AdminTemplateDetailDto` with `status: "Active"`.
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`),
+`TEMPLATE_ACTIVATION_REQUIRES_CURRENT_VERSION` (`409`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 12.6 Deactivate template
+
+**Method and path:** `POST /api/admin/templates/{templateId}/deactivate`
+
+**Route parameters:** `templateId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminTemplateDetailDto`.
+
+**Validation rules:** The operation is idempotent and changes state to
+`Inactive`. It must not modify or delete TemplateVersions or historical
+Documents.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Example request:** `POST /api/admin/templates/eb02cdda-021d-4b18-97cc-72c2a90d8618/deactivate`
+
+**Example response:** the `AdminTemplateDetailDto` with `status: "Inactive"`.
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`).

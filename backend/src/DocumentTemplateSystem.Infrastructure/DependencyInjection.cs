@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<ITemplateRepository, TemplateRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAdminCatalogRepository, AdminCatalogRepository>();
         services.AddSingleton<IPasswordHashService, AspNetPasswordHashService>();
         services.AddSingleton<IAccessTokenGenerator, JwtAccessTokenGenerator>();
         services.AddSingleton(TimeProvider.System);

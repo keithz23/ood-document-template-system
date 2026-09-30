@@ -39,6 +39,16 @@ public sealed class Category
 
     public IReadOnlyCollection<Template> Templates => _templates.AsReadOnly();
 
+    public void Rename(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Category name is required.", nameof(name));
+        }
+
+        Name = name.Trim();
+    }
+
     public void Activate() => IsActive = true;
 
     public void Deactivate() => IsActive = false;

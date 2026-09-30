@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileClock, Files, Menu, PanelLeft, UserRound } from "lucide-react";
+import { FileClock, Files, FolderCog, Menu, PanelLeft, Tags, UserRound } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,11 @@ const navigation = [
   { href: "/documents", label: "My documents", icon: FileClock },
 ] as const;
 
+const adminNavigation = [
+  { href: "/admin/categories", label: "Categories", icon: Tags },
+  { href: "/admin/templates", label: "Manage templates", icon: FolderCog },
+] as const;
+
 function ProductMark() {
   return (
     <Link href="/templates" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40">
@@ -31,31 +36,49 @@ function ProductMark() {
   );
 }
 
-function Navigation({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
-  return (
-    <nav aria-label="Primary navigation" className="space-y-1">
-      {navigation.map((item) => {
-        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-        const Icon = item.icon;
+function Navigation({
+  pathname,
+  isAdmin,
+  onNavigate,
+}: {
+  pathname: string;
+  isAdmin: boolean;
+  onNavigate?: () => void;
+}) {
+  const renderLink = (item: (typeof navigation)[number] | (typeof adminNavigation)[number]) => {
+    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+    const Icon = item.icon;
 
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
-              isActive
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground",
-            )}
-          >
-            <Icon aria-hidden="true" className="size-4" />
-            {item.label}
-          </Link>
-        );
-      })}
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onNavigate}
+        aria-current={isActive ? "page" : undefined}
+        className={cn(
+          "flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+          isActive
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground",
+        )}
+      >
+        <Icon aria-hidden="true" className="size-4" />
+        {item.label}
+      </Link>
+    );
+  };
+
+  return (
+    <nav aria-label="Primary navigation" className="space-y-5">
+      <div className="space-y-1">{navigation.map(renderLink)}</div>
+      {isAdmin ? (
+        <div className="border-t pt-4">
+          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Administration
+          </p>
+          <div className="space-y-1">{adminNavigation.map(renderLink)}</div>
+        </div>
+      ) : null}
     </nav>
   );
 }
@@ -81,6 +104,7 @@ function UserIdentity() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { session } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -97,7 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ProductMark />
         </div>
         <div className="flex flex-1 flex-col justify-between gap-8 px-3 py-4">
-          <Navigation pathname={pathname} />
+          <Navigation pathname={pathname} isAdmin={session?.user.role === "Admin"} />
           <UserIdentity />
         </div>
       </aside>
@@ -122,7 +146,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <SheetDescription className="sr-only">Primary navigation</SheetDescription>
           </SheetHeader>
           <div className="flex flex-1 flex-col justify-between gap-8 px-3 pb-4">
-            <Navigation pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            <Navigation
+              pathname={pathname}
+              isAdmin={session?.user.role === "Admin"}
+              onNavigate={() => setMobileOpen(false)}
+            />
             <UserIdentity />
           </div>
         </SheetContent>

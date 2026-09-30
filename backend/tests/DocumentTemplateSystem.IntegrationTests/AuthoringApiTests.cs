@@ -133,7 +133,7 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             await client.GetStringAsync("/swagger/v1/swagger.json"));
         var paths = document.RootElement.GetProperty("paths");
 
-        Assert.Equal(11, paths.EnumerateObject().Count());
+        Assert.Equal(19, paths.EnumerateObject().Count());
         Assert.True(paths.TryGetProperty("/api/auth/login", out var loginPath));
         Assert.True(paths.TryGetProperty("/api/auth/me", out _));
         Assert.True(paths.TryGetProperty("/api/templates", out _));
@@ -150,6 +150,10 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.True(paths.TryGetProperty("/api/documents/{documentId}/preview", out _));
         Assert.True(paths.TryGetProperty("/api/documents/{documentId}/finalize", out _));
         Assert.True(paths.TryGetProperty("/api/documents/{documentId}/download", out _));
+        Assert.True(paths.TryGetProperty("/api/admin/categories", out _));
+        Assert.True(paths.TryGetProperty("/api/admin/categories/{categoryId}", out _));
+        Assert.True(paths.TryGetProperty("/api/admin/templates", out _));
+        Assert.True(paths.TryGetProperty("/api/admin/templates/{templateId}", out _));
 
         var bearer = document.RootElement
             .GetProperty("components")
@@ -506,24 +510,33 @@ public sealed class TestAuthenticationHandler(
 {
     public const string AuthenticationScheme = "Test";
     public const string OtherAuthenticationScheme = "Other";
+    public const string AdminAuthenticationScheme = "Admin";
     public static readonly Guid UserId = Guid.Parse("66c7e543-7a25-46fb-92bc-40d6464f9c3d");
+    public static readonly Guid AdminId = Guid.Parse("c3d358ab-35bb-4018-8988-346381f6422c");
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue("Authorization", out var authorization)
             || (authorization != AuthenticationScheme
-                && authorization != OtherAuthenticationScheme))
+                && authorization != OtherAuthenticationScheme
+                && authorization != AdminAuthenticationScheme))
         {
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        var userId = authorization == OtherAuthenticationScheme
-            ? Guid.Parse("15dbaf8b-cc8c-447c-b0a8-6dc076fb8e7c")
-            : UserId;
+        var authenticationValue = authorization.ToString();
+        var userId = authenticationValue switch
+        {
+            OtherAuthenticationScheme =>
+                Guid.Parse("15dbaf8b-cc8c-447c-b0a8-6dc076fb8e7c"),
+            AdminAuthenticationScheme => AdminId,
+            _ => UserId
+        };
+        var role = authenticationValue == AdminAuthenticationScheme ? "Admin" : "User";
         Claim[] claims =
         [
             new(ClaimTypes.NameIdentifier, userId.ToString()),
-            new(ClaimTypes.Role, "User")
+            new(ClaimTypes.Role, role)
         ];
         var identity = new ClaimsIdentity(claims, AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);

@@ -167,3 +167,53 @@ export type ErrorResponseDto = Readonly<{
   traceId: string;
   errors?: readonly ValidationErrorDto[] | null;
 }>;
+
+export type AdminCategoryDto = Readonly<{
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+}>;
+
+export type CreateCategoryRequestDto = Readonly<{ name: string }>;
+export type UpdateCategoryRequestDto = Readonly<{ name: string }>;
+
+export type AdminTemplateVersionSummaryDto = Readonly<{
+  id: string;
+  versionNumber: number;
+  status: TemplateVersionStatus;
+  isCurrent: boolean;
+  contentFormat: ContentFormat;
+  placeholderCount: number;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type AdminTemplateSummaryDto = Readonly<{
+  id: string;
+  name: string;
+  status: TemplateStatus;
+  category: CategoryReferenceDto;
+  createdAt: string;
+  versionCount: number;
+  currentVersionNumber: number | null;
+}>;
+
+export type AdminTemplateDetailDto = Readonly<{
+  id: string;
+  name: string;
+  status: TemplateStatus;
+  category: CategoryReferenceDto;
+  createdAt: string;
+  versions: readonly AdminTemplateVersionSummaryDto[];
+}>;
+
+export type CreateTemplateRequestDto = Readonly<{
+  name: string;
+  categoryId: string;
+}>;
+
+export type UpdateDraftTemplateRequestDto = Readonly<{
+  name?: string;
+  categoryId?: string;
+}>;
