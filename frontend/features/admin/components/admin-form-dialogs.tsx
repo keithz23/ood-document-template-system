@@ -55,7 +55,9 @@ export function CategoryFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit category" : "Create category"}</DialogTitle>
+          <DialogTitle>
+            {editing ? "Edit category" : "Create category"}
+          </DialogTitle>
           <DialogDescription>
             {editing
               ? "Update the category name without changing its active state."
@@ -67,7 +69,10 @@ export function CategoryFormDialog({
             <AlertCircle aria-hidden="true" />
             <AlertTitle>Category could not be saved</AlertTitle>
             <AlertDescription>
-              {getApiErrorMessage(error, "Check the category details and try again.")}
+              {getApiErrorMessage(
+                error,
+                "Check the category details and try again.",
+              )}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -82,22 +87,38 @@ export function CategoryFormDialog({
             id="category-name"
             autoFocus
             aria-invalid={Boolean(form.formState.errors.name)}
-            aria-describedby={form.formState.errors.name ? "category-name-error" : undefined}
+            aria-describedby={
+              form.formState.errors.name ? "category-name-error" : undefined
+            }
             {...form.register("name")}
           />
           {form.formState.errors.name ? (
-            <p id="category-name-error" className="text-xs font-medium text-destructive">
+            <p
+              id="category-name-error"
+              className="text-xs font-medium text-destructive"
+            >
               {form.formState.errors.name.message}
             </p>
           ) : null}
         </form>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
             Cancel
           </Button>
           <Button type="submit" form="category-form" disabled={isPending}>
-            {isPending ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : null}
-            {isPending ? "Saving…" : editing ? "Save changes" : "Create category"}
+            {isPending ? (
+              <LoaderCircle aria-hidden="true" className="animate-spin" />
+            ) : null}
+            {isPending
+              ? "Saving…"
+              : editing
+                ? "Save changes"
+                : "Create category"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -161,7 +182,10 @@ export function TemplateFormDialog({
             <AlertCircle aria-hidden="true" />
             <AlertTitle>Template could not be saved</AlertTitle>
             <AlertDescription>
-              {getApiErrorMessage(error, "Check the template details and try again.")}
+              {getApiErrorMessage(
+                error,
+                "Check the template details and try again.",
+              )}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -177,11 +201,16 @@ export function TemplateFormDialog({
               id="template-name"
               autoFocus
               aria-invalid={Boolean(form.formState.errors.name)}
-              aria-describedby={form.formState.errors.name ? "template-name-error" : undefined}
+              aria-describedby={
+                form.formState.errors.name ? "template-name-error" : undefined
+              }
               {...form.register("name")}
             />
             {form.formState.errors.name ? (
-              <p id="template-name-error" className="text-xs font-medium text-destructive">
+              <p
+                id="template-name-error"
+                className="text-xs font-medium text-destructive"
+              >
                 {form.formState.errors.name.message}
               </p>
             ) : null}
@@ -192,29 +221,48 @@ export function TemplateFormDialog({
               id="template-category"
               className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               aria-invalid={Boolean(form.formState.errors.categoryId)}
-              aria-describedby={form.formState.errors.categoryId ? "template-category-error" : undefined}
+              aria-describedby={
+                form.formState.errors.categoryId
+                  ? "template-category-error"
+                  : undefined
+              }
               {...form.register("categoryId")}
             >
               <option value="">Choose a category</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
-                  {category.name}{category.isActive ? "" : " (Inactive)"}
+                  {category.name}
+                  {category.isActive ? "" : " (Inactive)"}
                 </option>
               ))}
             </select>
             {form.formState.errors.categoryId ? (
-              <p id="template-category-error" className="text-xs font-medium text-destructive">
+              <p
+                id="template-category-error"
+                className="text-xs font-medium text-destructive"
+              >
                 {form.formState.errors.categoryId.message}
               </p>
             ) : null}
           </div>
         </form>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
             Cancel
           </Button>
-          <Button type="submit" form="template-form" disabled={isPending || categories.length === 0}>
-            {isPending ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : null}
+          <Button
+            type="submit"
+            form="template-form"
+            disabled={isPending || categories.length === 0}
+          >
+            {isPending ? (
+              <LoaderCircle aria-hidden="true" className="animate-spin" />
+            ) : null}
             {isPending ? "Saving…" : submitLabel}
           </Button>
         </DialogFooter>

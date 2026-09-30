@@ -1,5 +1,7 @@
 using DocumentTemplateSystem.Domain.Entities;
+using DocumentTemplateSystem.Domain.Enums;
 using DocumentTemplateSystem.Infrastructure.Persistence;
+using DocumentTemplateSystem.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -62,6 +64,57 @@ public sealed class PersistenceModelTests
         Assert.Equal(
             DeleteBehavior.SetNull,
             FindForeignKey<DocumentPlaceholderValue, Placeholder>(model).DeleteBehavior);
+    }
+
+    [Fact]
+    public async Task AddTemplateVersion_MarksNewGraphAddedAndLeavesSourceUnchanged()
+    {
+        await using var context = CreateContext();
+        var creatorId = Guid.NewGuid();
+        var template = new Template(
+            "Agreement",
+            Guid.NewGuid(),
+            creatorId,
+            "<p>{{client_name}}</p>");
+        var source = template.Versions.Single();
+        source.AddPlaceholder(
+            "client_name",
+            "Client name",
+            PlaceholderDataType.Text,
+            true);
+        source.Publish(creatorId);
+        template.SetCurrentVersion(source.Id);
+        context.Attach(template);
+
+        var draft = template.AddVersion(
+            source.Content,
+            source.ContentFormat,
+            creatorId);
+        foreach (var placeholder in source.Placeholders)
+        {
+            draft.AddPlaceholder(
+                placeholder.Key,
+                placeholder.Label,
+                placeholder.DataType,
+                placeholder.IsRequired,
+                placeholder.DefaultValue);
+        }
+
+        var repository = new AdminCatalogRepository(context);
+        await repository.AddTemplateVersionAsync(draft);
+
+        Assert.Equal(EntityState.Added, context.Entry(draft).State);
+        Assert.All(
+            draft.Placeholders,
+            placeholder => Assert.Equal(
+                EntityState.Added,
+                context.Entry(placeholder).State));
+        Assert.Equal(EntityState.Unchanged, context.Entry(source).State);
+        Assert.All(
+            source.Placeholders,
+            placeholder => Assert.Equal(
+                EntityState.Unchanged,
+                context.Entry(placeholder).State));
     }
 
     private static void AssertUniqueIndex(

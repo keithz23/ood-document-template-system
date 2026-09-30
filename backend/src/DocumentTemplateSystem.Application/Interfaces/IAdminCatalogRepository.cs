@@ -23,6 +23,10 @@ public interface IAdminCatalogRepository
         Guid templateId,
         CancellationToken cancellationToken = default);
 
+    Task<AdminTemplateEntry?> GetTemplateByVersionIdAsync(
+        Guid templateVersionId,
+        CancellationToken cancellationToken = default);
+
     Task AddCategoryAsync(
         Category category,
         CancellationToken cancellationToken = default);
@@ -31,7 +35,17 @@ public interface IAdminCatalogRepository
         Template template,
         CancellationToken cancellationToken = default);
 
+    Task AddTemplateVersionAsync(
+        TemplateVersion templateVersion,
+        CancellationToken cancellationToken = default);
+
     void AddAuditLog(AuditLog auditLog);
 
+    void RemovePlaceholder(Placeholder placeholder);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default);
 }

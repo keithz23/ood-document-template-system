@@ -62,4 +62,28 @@ public sealed class Placeholder
 
     public IReadOnlyCollection<DocumentPlaceholderValue> DocumentValues =>
         _documentValues.AsReadOnly();
+
+    internal void Update(
+        string key,
+        string label,
+        PlaceholderDataType dataType,
+        bool isRequired,
+        string? defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new ArgumentException("Placeholder key is required.", nameof(key));
+        }
+
+        if (string.IsNullOrWhiteSpace(label))
+        {
+            throw new ArgumentException("Placeholder label is required.", nameof(label));
+        }
+
+        Key = key.Trim();
+        Label = label.Trim();
+        DataType = dataType;
+        IsRequired = isRequired;
+        DefaultValue = defaultValue;
+    }
 }

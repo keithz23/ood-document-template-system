@@ -18,9 +18,13 @@ export function AdminGuard({ children }: { children: ReactNode }) {
         </div>
         <h1 className="mt-4 text-lg font-semibold">Admin access required</h1>
         <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
-          Your account does not have permission to manage categories or templates.
+          Your account does not have permission to manage categories or
+          templates.
         </p>
-        <Link href="/templates" className={cn(buttonVariants({ variant: "outline" }), "mt-5")}>
+        <Link
+          href="/templates"
+          className={cn(buttonVariants({ variant: "outline" }), "mt-5")}
+        >
           Return to templates
         </Link>
       </section>
