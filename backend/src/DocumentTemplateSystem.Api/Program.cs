@@ -1,4 +1,5 @@
 using DocumentTemplateSystem.Api.Extensions;
+using DocumentTemplateSystem.Api.Middleware;
 using DocumentTemplateSystem.Infrastructure;
 using DocumentTemplateSystem.Infrastructure.Persistence.Seeding;
 
@@ -21,6 +22,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<ApiExceptionMiddleware>();
 app.UseHttpsRedirection();
 app.UseCors(ServiceCollectionExtensions.FrontendCorsPolicy);
 app.UseAuthentication();

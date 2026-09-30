@@ -1,4 +1,6 @@
+using DocumentTemplateSystem.Application.Interfaces;
 using DocumentTemplateSystem.Infrastructure.Persistence;
+using DocumentTemplateSystem.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,8 +23,9 @@ public static class DependencyInjection
 
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
+        services.AddScoped<ITemplateRepository, TemplateRepository>();
+        services.AddScoped<IDocumentRepository, DocumentRepository>();
 
         return services;
     }
 }
-
