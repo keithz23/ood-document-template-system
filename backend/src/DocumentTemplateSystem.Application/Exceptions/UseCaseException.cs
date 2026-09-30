@@ -6,6 +6,7 @@ public enum UseCaseErrorKind
 {
     Validation,
     Unauthorized,
+    Forbidden,
     NotFound,
     Conflict,
     UnprocessableEntity
@@ -52,12 +53,24 @@ public sealed class UseCaseException : Exception
     public static UseCaseException Conflict(string code, string title) =>
         new(UseCaseErrorKind.Conflict, code, title);
 
-    public static UseCaseException Unprocessable(string code, string title) =>
-        new(UseCaseErrorKind.UnprocessableEntity, code, title);
+    public static UseCaseException Unprocessable(
+        string code,
+        string title,
+        IReadOnlyList<ValidationErrorDto>? errors = null) =>
+        new(UseCaseErrorKind.UnprocessableEntity, code, title, null, errors);
+
+    public static UseCaseException Forbidden(string code, string title) =>
+        new(UseCaseErrorKind.Forbidden, code, title);
 
     public static UseCaseException AuthenticationRequired() =>
         new(
             UseCaseErrorKind.Unauthorized,
             "AUTHENTICATION_REQUIRED",
             "Authentication is required.");
+
+    public static UseCaseException InvalidCredentials() =>
+        new(
+            UseCaseErrorKind.Unauthorized,
+            "INVALID_CREDENTIALS",
+            "The supplied credentials are invalid.");
 }

@@ -1,11 +1,12 @@
-# API Contract — First Authoring Vertical Slice
+# API Contract — Authoring and Phase 6A Administration
 
-Status: **design contract only; endpoints are not implemented**.
+Status: **approved implementation contract**.
 
 This document derives the minimum REST contract for the current author-facing
-frontend and the approved rules in `AGENTS.md` and `PRODUCT.md`. It deliberately
-excludes administration, sharing, collaboration, registration, password reset,
-token refresh, template mutation, and every other later-phase capability.
+frontend and the approved rules in `AGENTS.md` and `PRODUCT.md`. Phase 6A adds
+only Category and Template metadata administration; later administration,
+sharing, collaboration, registration, password reset, and token refresh remain
+outside the contract.
 
 `AGENTS.md` section 7 is the only approved domain-model source currently present
 in the repository. No separate ERD or Class Diagram file was found. If one is
@@ -17,7 +18,9 @@ added later and conflicts with this document, the decision priority in
 - Base path: `/api`
 - Media type for JSON: `application/json`
 - Authentication: JWT bearer token in `Authorization: Bearer <token>`
-- Protected roles in this slice: `User` and `Admin`
+- Protected authoring roles: `User` and `Admin`.
+- Paths under `/api/admin` require the `Admin` role. An authenticated `User`
+  receives `403 Forbidden`; an unauthenticated caller receives `401 Unauthorized`.
 - Admin receives ordinary user capabilities here. This contract does **not**
   grant Admin cross-user document access.
 - Dates and timestamps use ISO 8601. Timestamps are UTC, for example
@@ -76,14 +79,12 @@ These points must not be silently encoded into entities or persistence:
    `Html`. The API contract uses `contentFormat: "Html"`. The exact editor and
    token-to-Composite parsing mechanism remains unresolved and is not defined
    here.
-10. **Download format:** Download is present in the mock, but `DESIGN.md`
-    explicitly leaves PDF, DOCX, HTML, and other formats unresolved. The route
-    is reserved below, but its success media type, filename extension, and
-    renderer are **not implementable until a format is approved**.
-11. **Download lifecycle:** the mock enables Download only for Finalized
-    documents. The approved business rules do not explicitly say drafts cannot
-    be downloaded. This contract does not add that backend restriction. The
-    question must be decided with the export format.
+10. **Download format (resolved):** HTML is the only approved MVP export
+    format. Downloads use the `.html` extension and
+    `text/html; charset=utf-8`. PDF and DOCX are outside this slice.
+11. **Download lifecycle (resolved):** both Draft and Finalized documents may
+    be downloaded. The mock's former Finalized-only presentation is not a
+    business rule.
 12. **User identity:** the shell hard-codes a user name and does not implement
     authentication UI. `/api/auth/me` supplies the real shell identity.
 
@@ -355,7 +356,7 @@ approved model; it is not a new Document entity field.
 | Current-version placeholders | `GET` | `/api/template-versions/{templateVersionId}/placeholders` |
 | Create draft | `POST` | `/api/documents` |
 | Load document | `GET` | `/api/documents/{documentId}` |
-| Update draft | `PUT` | `/api/documents/{documentId}` |
+| Update draft | `PATCH` | `/api/documents/{documentId}` |
 | Preview draft | `POST` | `/api/documents/{documentId}/preview` |
 | Finalize document | `POST` | `/api/documents/{documentId}/finalize` |
 | Download document | `GET` | `/api/documents/{documentId}/download` |
@@ -766,7 +767,7 @@ Authorization: Bearer <access-token>
 
 ### 7.3 Update draft document
 
-**Method and path:** `PUT /api/documents/{documentId}`
+**Method and path:** `PATCH /api/documents/{documentId}`
 
 **Authorization:** Bearer token; caller must own the document.
 
@@ -794,9 +795,13 @@ Authorization: Bearer <access-token>
 **Validation and business rules**
 
 - Document must exist, belong to the caller, and have status `Draft`.
-- `title` must be non-empty after trimming.
-- `content` is required and represents the independent Document copy; updating
+- At least one of `title`, `content`, or `placeholderValues` must be present.
+- Omitted properties retain their currently persisted values.
+- When supplied, `title` must be non-empty after trimming.
+- When supplied, `content` represents the independent Document copy; updating
   it never changes TemplateVersion content.
+- When supplied, `placeholderValues` is the complete set of values to retain;
+  an empty array clears the Draft's stored placeholder values.
 - Placeholder IDs must belong to the retained source TemplateVersion.
 - Duplicate or unknown Placeholder IDs are rejected.
 - Required placeholder values may be absent or empty while the document remains
@@ -814,7 +819,7 @@ Authorization: Bearer <access-token>
 **Example request:** The request DTO above is the example JSON body for:
 
 ```http
-PUT /api/documents/b4382058-feb4-4cd4-b8bf-627a13822161 HTTP/1.1
+PATCH /api/documents/b4382058-feb4-4cd4-b8bf-627a13822161 HTTP/1.1
 Authorization: Bearer <access-token>
 Content-Type: application/json
 ```
@@ -1014,14 +1019,9 @@ Content-Type: application/json
 - `MISSING_REQUIRED_PLACEHOLDER` (`422`)
 - `INVALID_PLACEHOLDER_VALUE` (`422`)
 
-### 7.6 Download document — reserved contract
+### 7.6 Download document
 
 **Method and path:** `GET /api/documents/{documentId}/download`
-
-**Implementation status:** **Blocked by the unresolved export-format decision.**
-Do not implement this endpoint until PDF, DOCX, HTML, or another exact format is
-approved. Implementing `application/octet-stream` as a hidden default would
-silently choose export semantics and is not approved.
 
 **Authorization:** Bearer token; caller must own the document.
 
@@ -1032,25 +1032,28 @@ invented before supported formats are approved.
 
 **Request DTO:** None.
 
-**Response DTO:** No JSON DTO on success. The eventual success response is a
-binary file result with:
+**Response DTO:** No JSON DTO on success. The success response is an HTML file
+with:
 
 ```http
-Content-Type: <pending approved export media type>
-Content-Disposition: attachment; filename*=UTF-8''<safe-title>.<pending-extension>
+Content-Type: text/html; charset=utf-8
+Content-Disposition: attachment; filename*=UTF-8''<safe-title>.html
 ```
 
 JSON failures still use `ErrorResponseDto`.
 
-**Validation and business rules currently known**
+**Validation and business rules**
 
 - Document must exist and be authorized for the caller.
 - Export must use the Document's stored independent content and stored
   placeholder snapshots, never the latest TemplateVersion.
-- The permitted lifecycle state is unresolved; the mock's Finalized-only rule
-  is not promoted to a backend rule here.
+- Both Draft and Finalized documents may be downloaded.
+- Placeholder tokens are rendered from the Document's stored snapshot values.
+- HTML is the only approved MVP export format. PDF and DOCX are not supported.
+- The filename is derived from the title, made safe for a download filename,
+  and uses the `.html` extension.
 
-**HTTP status codes after the format is approved:** `200 OK`,
+**HTTP status codes:** `200 OK`,
 `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`,
 `422 Unprocessable Entity`, `500 Internal Server Error`.
 
@@ -1065,15 +1068,14 @@ Authorization: Bearer <access-token>
 
 ```http
 HTTP/1.1 200 OK
-Content-Type: <pending approved export media type>
-Content-Disposition: attachment; filename*=UTF-8''Acme-consulting-agreement.<pending-extension>
+Content-Type: text/html; charset=utf-8
+Content-Disposition: attachment; filename*=UTF-8''Acme-consulting-agreement.html
 
-<binary body in the approved format>
+<h1>Professional services agreement</h1><p>This agreement is made on 2026-09-30 between Northstar Studio and Acme Industries.</p>
 ```
 
-**Error cases currently known:** `DOCUMENT_NOT_FOUND` (`404`),
-`UNAUTHORIZED_DOCUMENT_ACCESS` (`403`), `EXPORT_FAILED` (`422`). Exact
-format-specific validation remains pending.
+**Error cases:** `DOCUMENT_NOT_FOUND` (`404`),
+`UNAUTHORIZED_DOCUMENT_ACCESS` (`403`), `EXPORT_FAILED` (`422`).
 
 ### 7.7 List document history
 
@@ -1147,7 +1149,7 @@ transport contracts to mirror the existing mocks:
 | `PlaceholderDefinition.example` | Remove; use only approved `defaultValue` |
 | `Record<string,string>` values | Adapt from/to placeholder-value arrays by ID |
 | Local Draft creation | Call `POST /api/documents` before editing the clone |
-| Local Save Draft | Call `PUT /api/documents/{documentId}` |
+| Local Save Draft | Call `PATCH /api/documents/{documentId}` |
 | Local Preview substitution | Call the non-mutating preview endpoint |
 | Local Finalize state change | Call the atomic finalize endpoint |
 | Hard-coded shell user | Load `GET /api/auth/me` |
@@ -1160,12 +1162,425 @@ This contract does not define:
 - registration, logout, refresh tokens, password reset, or profile editing;
 - inactive/draft template browsing for authors;
 - historical template-version browsing outside retained Document history;
-- category management or a standalone category endpoint;
-- admin template, version, placeholder, user, or audit-log endpoints;
+- template-version publishing or editing, placeholder administration, user
+  administration, or audit-log endpoints and UI;
 - sharing, comments, teams, collaboration, approval chains, or cross-user access;
 - autosave guarantees, bulk operations, server sorting, pagination, or search;
 - template mutation or editing Published versions;
 - an editor technology or a JSON content editor;
-- an export/download format.
+- PDF or DOCX export.
 
 Those capabilities require separate approval and contract work.
+
+## 10. Phase 6A admin DTOs
+
+Admin DTOs remain separate from domain entities. `Template` creation produces
+the approved empty initial Draft `TemplateVersion` in `Html` format; Phase 6A
+does not expose content or version mutation.
+
+```text
+AdminCategoryDto
+  id: string
+  name: string
+  isActive: boolean
+  createdAt: string (ISO 8601 UTC)
+
+CreateCategoryRequestDto
+  name: string
+
+UpdateCategoryRequestDto
+  name: string
+
+AdminTemplateVersionSummaryDto
+  id: string
+  versionNumber: integer
+  status: "Draft" | "Published"
+  isCurrent: boolean
+  contentFormat: "Html" | "Json"
+  placeholderCount: integer
+  createdAt: string (ISO 8601 UTC)
+  updatedAt: string (ISO 8601 UTC)
+
+AdminTemplateSummaryDto
+  id: string
+  name: string
+  status: "Draft" | "Active" | "Inactive"
+  category: CategoryReferenceDto
+  createdAt: string (ISO 8601 UTC)
+  versionCount: integer
+  currentVersionNumber: integer | null
+
+AdminTemplateDetailDto
+  id: string
+  name: string
+  status: "Draft" | "Active" | "Inactive"
+  category: CategoryReferenceDto
+  createdAt: string (ISO 8601 UTC)
+  versions: AdminTemplateVersionSummaryDto[]
+
+CreateTemplateRequestDto
+  name: string
+  categoryId: string
+
+UpdateDraftTemplateRequestDto
+  name?: string
+  categoryId?: string
+```
+
+## 11. Category administration
+
+All endpoints in this section require a Bearer token with role `Admin`.
+Category state changes are soft changes; there is no delete endpoint.
+
+### 11.1 List categories
+
+**Method and path:** `GET /api/admin/categories`
+
+**Route/query parameters:** None. MVP search/filtering is client-side.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminCategoryDto[]`, ordered by name and including active
+and inactive categories.
+
+**Validation rules:** None beyond authentication and authorization.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`500 Internal Server Error`.
+
+**Example request**
+
+```http
+GET /api/admin/categories HTTP/1.1
+Authorization: Bearer <admin-access-token>
+```
+
+**Example response**
+
+```json
+[
+  {
+    "id": "5c67b0b0-bf84-42ea-b567-f0872a45ea52",
+    "name": "Business",
+    "isActive": true,
+    "createdAt": "2026-09-30T08:00:00Z"
+  }
+]
+```
+
+**Error cases:** `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 11.2 Create category
+
+**Method and path:** `POST /api/admin/categories`
+
+**Route/query parameters:** None.
+
+**Request DTO:** `CreateCategoryRequestDto`.
+
+**Response DTO:** `AdminCategoryDto`; the new category is active.
+
+**Validation rules:** `name` is required after trimming.
+
+**HTTP status codes:** `201 Created`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `500 Internal Server Error`.
+
+**Example request**
+
+```json
+{ "name": "Legal" }
+```
+
+**Example response**
+
+```json
+{
+  "id": "8395732d-0734-4cc0-8424-4d0b57482008",
+  "name": "Legal",
+  "isActive": true,
+  "createdAt": "2026-09-30T09:00:00Z"
+}
+```
+
+**Error cases:** `VALIDATION_ERROR` (`400`), `AUTHENTICATION_REQUIRED` (`401`),
+`FORBIDDEN` (`403`).
+
+### 11.3 Update category
+
+**Method and path:** `PATCH /api/admin/categories/{categoryId}`
+
+**Route parameters:** `categoryId` is the opaque Category identifier. No query
+parameters.
+
+**Request DTO:** `UpdateCategoryRequestDto`.
+
+**Response DTO:** updated `AdminCategoryDto`.
+
+**Validation rules:** `name` is required after trimming. Updating a category
+does not change its active state.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
+
+**Example request**
+
+```json
+{ "name": "Legal and compliance" }
+```
+
+**Example response**
+
+```json
+{
+  "id": "8395732d-0734-4cc0-8424-4d0b57482008",
+  "name": "Legal and compliance",
+  "isActive": true,
+  "createdAt": "2026-09-30T09:00:00Z"
+}
+```
+
+**Error cases:** `CATEGORY_NOT_FOUND` (`404`), `VALIDATION_ERROR` (`400`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 11.4 Activate category
+
+**Method and path:** `POST /api/admin/categories/{categoryId}/activate`
+
+**Route parameters:** `categoryId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminCategoryDto`.
+
+**Validation rules:** The operation is idempotent and does not alter Templates.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Example request:** `POST /api/admin/categories/8395732d-0734-4cc0-8424-4d0b57482008/activate`
+
+**Example response:** the `AdminCategoryDto` above with `isActive: true`.
+
+**Error cases:** `CATEGORY_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`).
+
+### 11.5 Deactivate category
+
+**Method and path:** `POST /api/admin/categories/{categoryId}/deactivate`
+
+**Route parameters:** `categoryId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminCategoryDto`.
+
+**Validation rules:** The operation is idempotent. It does not delete or
+deactivate related Templates and must not affect historical Documents.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Example request:** `POST /api/admin/categories/8395732d-0734-4cc0-8424-4d0b57482008/deactivate`
+
+**Example response:** the `AdminCategoryDto` above with `isActive: false`.
+
+**Error cases:** `CATEGORY_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`).
+
+## 12. Template administration
+
+All endpoints in this section require a Bearer token with role `Admin`.
+Templates are never hard-deleted. Content, TemplateVersion publication, and
+Placeholder administration remain outside Phase 6A.
+
+### 12.1 List templates
+
+**Method and path:** `GET /api/admin/templates`
+
+**Route/query parameters:** None. MVP search/filtering is client-side.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminTemplateSummaryDto[]`, ordered newest first and
+including Draft, Active, and Inactive Templates.
+
+**Validation rules:** None beyond authentication and authorization.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`500 Internal Server Error`.
+
+**Example request:** `GET /api/admin/templates` with an Admin Bearer token.
+
+**Example response**
+
+```json
+[
+  {
+    "id": "eb02cdda-021d-4b18-97cc-72c2a90d8618",
+    "name": "Professional services agreement",
+    "status": "Active",
+    "category": {
+      "id": "5c67b0b0-bf84-42ea-b567-f0872a45ea52",
+      "name": "Business"
+    },
+    "createdAt": "2026-09-28T08:00:00Z",
+    "versionCount": 3,
+    "currentVersionNumber": 3
+  }
+]
+```
+
+**Error cases:** `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 12.2 View template detail
+
+**Method and path:** `GET /api/admin/templates/{templateId}`
+
+**Route parameters:** `templateId`. No query parameters.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminTemplateDetailDto` including read-only version summaries.
+
+**Validation rules:** Draft and inactive Templates are visible to Admin.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Example request:** `GET /api/admin/templates/eb02cdda-021d-4b18-97cc-72c2a90d8618`
+
+**Example response**
+
+```json
+{
+  "id": "eb02cdda-021d-4b18-97cc-72c2a90d8618",
+  "name": "Professional services agreement",
+  "status": "Active",
+  "category": {
+    "id": "5c67b0b0-bf84-42ea-b567-f0872a45ea52",
+    "name": "Business"
+  },
+  "createdAt": "2026-09-28T08:00:00Z",
+  "versions": [
+    {
+      "id": "f70b6a83-39a2-47ba-9963-adc13a4e1eb3",
+      "versionNumber": 3,
+      "status": "Published",
+      "isCurrent": true,
+      "contentFormat": "Html",
+      "placeholderCount": 6,
+      "createdAt": "2026-09-28T08:00:00Z",
+      "updatedAt": "2026-09-28T08:42:00Z"
+    }
+  ]
+}
+```
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`).
+
+### 12.3 Create template
+
+**Method and path:** `POST /api/admin/templates`
+
+**Route/query parameters:** None.
+
+**Request DTO:** `CreateTemplateRequestDto`.
+
+**Response DTO:** `AdminTemplateDetailDto` with status `Draft` and one empty
+Draft version numbered `1` in `Html` format.
+
+**Validation rules:** `name` is required after trimming. `categoryId` must
+identify an existing Category.
+No Template content or Placeholder input is accepted in Phase 6A.
+
+**HTTP status codes:** `201 Created`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
+
+**Example request**
+
+```json
+{
+  "name": "Statement of work",
+  "categoryId": "5c67b0b0-bf84-42ea-b567-f0872a45ea52"
+}
+```
+
+**Example response:** an `AdminTemplateDetailDto` with `status: "Draft"` and
+one Draft entry in `versions`.
+
+**Error cases:** `CATEGORY_NOT_FOUND` (`404`), `VALIDATION_ERROR` (`400`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 12.4 Update Draft template metadata
+
+**Method and path:** `PATCH /api/admin/templates/{templateId}`
+
+**Route parameters:** `templateId`. No query parameters.
+
+**Request DTO:** `UpdateDraftTemplateRequestDto`.
+
+**Response DTO:** updated `AdminTemplateDetailDto`.
+
+**Validation rules:** At least one of `name` or `categoryId` is required.
+Provided names are trimmed and required. A provided `categoryId` must exist.
+Only a Template whose status is `Draft` may have its
+metadata updated; versions, content, and placeholders are not changed.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
+
+**Example request**
+
+```json
+{
+  "name": "Statement of work — standard",
+  "categoryId": "8395732d-0734-4cc0-8424-4d0b57482008"
+}
+```
+
+**Example response:** the updated `AdminTemplateDetailDto`.
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`), `CATEGORY_NOT_FOUND` (`404`),
+`TEMPLATE_NOT_DRAFT` (`409`), `VALIDATION_ERROR` (`400`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 12.5 Activate template
+
+**Method and path:** `POST /api/admin/templates/{templateId}/activate`
+
+**Route parameters:** `templateId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminTemplateDetailDto`.
+
+**Validation rules:** The Template must have a current Published
+TemplateVersion. Activation does not modify any TemplateVersion or Document.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
+
+**Example request:** `POST /api/admin/templates/eb02cdda-021d-4b18-97cc-72c2a90d8618/activate`
+
+**Example response:** the `AdminTemplateDetailDto` with `status: "Active"`.
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`),
+`TEMPLATE_ACTIVATION_REQUIRES_CURRENT_VERSION` (`409`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 12.6 Deactivate template
+
+**Method and path:** `POST /api/admin/templates/{templateId}/deactivate`
+
+**Route parameters:** `templateId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminTemplateDetailDto`.
+
+**Validation rules:** The operation is idempotent and changes state to
+`Inactive`. It must not modify or delete TemplateVersions or historical
+Documents.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Example request:** `POST /api/admin/templates/eb02cdda-021d-4b18-97cc-72c2a90d8618/deactivate`
+
+**Example response:** the `AdminTemplateDetailDto` with `status: "Inactive"`.
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`).

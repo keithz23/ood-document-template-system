@@ -53,6 +53,24 @@ public sealed record CreateDraftDocumentRequestDto(
     Guid TemplateVersionId,
     string Title);
 
+public sealed record PlaceholderValueInputDto(
+    Guid PlaceholderId,
+    string Value);
+
+public sealed record UpdateDraftDocumentRequestDto(
+    string? Title,
+    string? Content,
+    IReadOnlyList<PlaceholderValueInputDto>? PlaceholderValues);
+
+public sealed record PreviewDocumentRequestDto(
+    string Content,
+    IReadOnlyList<PlaceholderValueInputDto> PlaceholderValues);
+
+public sealed record FinalizeDocumentRequestDto(
+    string Title,
+    string Content,
+    IReadOnlyList<PlaceholderValueInputDto> PlaceholderValues);
+
 public sealed record DocumentSourceDto(
     Guid TemplateId,
     string TemplateName,
@@ -78,6 +96,25 @@ public sealed record DocumentDetailDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     DateTimeOffset? FinalizedAt);
+
+public sealed record DocumentSummaryDto(
+    Guid Id,
+    string Title,
+    DocumentStatus Status,
+    DocumentSourceDto Source,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? FinalizedAt);
+
+public sealed record PreviewDocumentResponseDto(
+    Guid DocumentId,
+    string RenderedContent,
+    ContentFormat ContentFormat);
+
+public sealed record DocumentDownloadDto(
+    string FileName,
+    string ContentType,
+    string Content);
 
 public sealed record ValidationErrorDto(
     string Field,

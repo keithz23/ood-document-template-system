@@ -66,6 +66,27 @@ public sealed class Template
 
     public IReadOnlyCollection<TemplateVersion> Versions => _versions.AsReadOnly();
 
+    public void UpdateDraftMetadata(string name, Guid categoryId)
+    {
+        if (Status != TemplateStatus.Draft)
+        {
+            throw new InvalidOperationException("Only a Draft template may be updated.");
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Template name is required.", nameof(name));
+        }
+
+        if (categoryId == Guid.Empty)
+        {
+            throw new ArgumentException("A category is required.", nameof(categoryId));
+        }
+
+        Name = name.Trim();
+        CategoryId = categoryId;
+    }
+
     public TemplateVersion AddVersion(
         string content,
         ContentFormat contentFormat,

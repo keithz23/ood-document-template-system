@@ -64,7 +64,9 @@ public sealed class ApplicationServiceTests
         var service = new DocumentService(
             new TemplateRepositoryStub(data),
             documentRepository,
-            currentUser);
+            currentUser,
+            new PlaceholderValidator(),
+            new HtmlDocumentRenderer());
         var sourceContent = data.Version.Content;
 
         var result = await service.CreateDraftAsync(new CreateDraftDocumentRequestDto(
@@ -95,7 +97,9 @@ public sealed class ApplicationServiceTests
         var service = new DocumentService(
             repository,
             new DocumentRepositoryStub(),
-            new CurrentUserContextStub(Guid.NewGuid()));
+            new CurrentUserContextStub(Guid.NewGuid()),
+            new PlaceholderValidator(),
+            new HtmlDocumentRenderer());
 
         var exception = await Assert.ThrowsAsync<UseCaseException>(() =>
             service.CreateDraftAsync(new CreateDraftDocumentRequestDto(
@@ -113,7 +117,9 @@ public sealed class ApplicationServiceTests
         var service = new DocumentService(
             new TemplateRepositoryStub(data),
             new DocumentRepositoryStub(),
-            new CurrentUserContextStub(Guid.NewGuid()));
+            new CurrentUserContextStub(Guid.NewGuid()),
+            new PlaceholderValidator(),
+            new HtmlDocumentRenderer());
 
         var exception = await Assert.ThrowsAsync<UseCaseException>(() =>
             service.CreateDraftAsync(new CreateDraftDocumentRequestDto(Guid.Empty, " ")));
@@ -225,6 +231,24 @@ public sealed class ApplicationServiceTests
         {
             Documents.Add(document);
             return Task.CompletedTask;
+        }
+
+        public Task<DocumentEntry?> GetByIdAsync(
+            Guid documentId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<DocumentEntry?>(null);
+
+        public Task<IReadOnlyList<DocumentEntry>> GetByOwnerAsync(
+            Guid ownerId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<DocumentEntry>>([]);
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public void RemovePlaceholderValues(
+            IReadOnlyCollection<DocumentPlaceholderValue> placeholderValues)
+        {
         }
     }
 

@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 using DocumentTemplateSystem.Api.Authentication;
 using DocumentTemplateSystem.Api.Middleware;
+using DocumentTemplateSystem.Api.OpenApi;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Interfaces;
 using DocumentTemplateSystem.Application.Services;
@@ -56,7 +58,7 @@ public static class ServiceCollectionExtensions
             {
                 Title = "Document Template System API",
                 Version = "v1",
-                Description = "First author-facing template and Draft document API slice."
+                Description = "Author document workflows and Phase 6A catalog administration."
             });
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
@@ -69,12 +71,16 @@ public static class ServiceCollectionExtensions
             {
                 [new OpenApiSecuritySchemeReference("Bearer", document)] = []
             });
+            options.OperationFilter<AllowAnonymousOperationFilter>();
         });
         services.AddHealthChecks();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+        services.AddScoped<AuthenticationService>();
         services.AddScoped<TemplateService>();
         services.AddScoped<DocumentService>();
+        services.AddScoped<AdminCatalogService>();
+        services.AddSingleton<IDocumentRenderer, HtmlDocumentRenderer>();
         services.AddSingleton<PlaceholderValidator>();
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -82,6 +88,7 @@ public static class ServiceCollectionExtensions
             {
                 var signingKey = configuration["Jwt:Key"];
 
+                options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -90,6 +97,9 @@ public static class ServiceCollectionExtensions
                     ValidAudience = configuration["Jwt:Audience"],
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
+                    NameClaimType = "unique_name",
+                    RoleClaimType = ClaimTypes.Role,
+                    ClockSkew = TimeSpan.FromMinutes(1),
                     IssuerSigningKey = string.IsNullOrWhiteSpace(signingKey)
                         ? null
                         : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey))
@@ -133,7 +143,8 @@ public static class ServiceCollectionExtensions
                 policy
                     .WithOrigins(allowedOrigins)
                     .AllowAnyHeader()
-                    .AllowAnyMethod();
+                    .AllowAnyMethod()
+                    .WithExposedHeaders("Content-Disposition");
             });
         });
 

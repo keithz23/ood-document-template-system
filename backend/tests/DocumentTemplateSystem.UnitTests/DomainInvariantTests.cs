@@ -17,6 +17,38 @@ public sealed class DomainInvariantTests
     }
 
     [Fact]
+    public void DraftTemplate_MetadataCanBeUpdatedButPublishedWorkflowStateCannot()
+    {
+        var creator = Guid.NewGuid();
+        var template = CreateTemplate(creator);
+        var newCategoryId = Guid.NewGuid();
+
+        template.UpdateDraftMetadata("  Revised agreement  ", newCategoryId);
+
+        Assert.Equal("Revised agreement", template.Name);
+        Assert.Equal(newCategoryId, template.CategoryId);
+
+        var version = template.Versions.Single();
+        version.Publish(creator);
+        template.SetCurrentVersion(version.Id);
+        template.Activate();
+        Assert.Throws<InvalidOperationException>(() =>
+            template.UpdateDraftMetadata("Another name", Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void Category_RenamePreservesActivationState()
+    {
+        var category = new Category("Business", Guid.NewGuid());
+        category.Deactivate();
+
+        category.Rename("  Legal  ");
+
+        Assert.Equal("Legal", category.Name);
+        Assert.False(category.IsActive);
+    }
+
+    [Fact]
     public void PublishedVersion_CannotBeEditedInPlace()
     {
         var template = CreateTemplate();

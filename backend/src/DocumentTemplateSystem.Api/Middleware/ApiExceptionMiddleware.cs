@@ -65,6 +65,7 @@ public sealed class ApiExceptionMiddleware(
     {
         UseCaseErrorKind.Validation => StatusCodes.Status400BadRequest,
         UseCaseErrorKind.Unauthorized => StatusCodes.Status401Unauthorized,
+        UseCaseErrorKind.Forbidden => StatusCodes.Status403Forbidden,
         UseCaseErrorKind.NotFound => StatusCodes.Status404NotFound,
         UseCaseErrorKind.Conflict => StatusCodes.Status409Conflict,
         UseCaseErrorKind.UnprocessableEntity => StatusCodes.Status422UnprocessableEntity,

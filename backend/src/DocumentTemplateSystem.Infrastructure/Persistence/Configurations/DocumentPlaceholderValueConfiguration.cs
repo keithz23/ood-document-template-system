@@ -11,6 +11,7 @@ public sealed class DocumentPlaceholderValueConfiguration
     {
         builder.ToTable("DocumentPlaceholderValues");
         builder.HasKey(value => value.Id);
+        builder.Property(value => value.Id).ValueGeneratedNever();
 
         builder.Property(value => value.PlaceholderKeySnapshot).IsRequired();
         builder.Property(value => value.LabelSnapshot).IsRequired();
