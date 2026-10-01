@@ -217,3 +217,31 @@ export type UpdateDraftTemplateRequestDto = Readonly<{
   name?: string;
   categoryId?: string;
 }>;
+
+export type AdminTemplateVersionDetailDto = Readonly<{
+  id: string;
+  templateId: string;
+  versionNumber: number;
+  content: string;
+  contentFormat: ContentFormat;
+  status: TemplateVersionStatus;
+  isCurrent: boolean;
+  placeholderCount: number;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type UpdateDraftTemplateVersionRequestDto = Readonly<{
+  content: string;
+}>;
+
+export type CreatePlaceholderRequestDto = Readonly<{
+  key: string;
+  label: string;
+  dataType: PlaceholderDataType;
+  isRequired: boolean;
+  defaultValue: string | null;
+}>;
+
+export type UpdatePlaceholderRequestDto = CreatePlaceholderRequestDto;

@@ -6,7 +6,11 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-export function PageLoadingState({ label = "Loading content" }: { label?: string }) {
+export function PageLoadingState({
+  label = "Loading content",
+}: {
+  label?: string;
+}) {
   return (
     <div aria-busy="true" aria-label={label} className="space-y-6">
       <div className="space-y-2">
@@ -47,9 +51,14 @@ export function EmptyState({
         <FileQuestion aria-hidden="true" className="size-5" />
       </div>
       <h2 className="mt-4 text-base font-semibold">{title}</h2>
-      <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
+      <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
       {actionHref && actionLabel ? (
-        <Link href={actionHref} className={cn(buttonVariants(), "mt-5 min-h-9 px-3")}>
+        <Link
+          href={actionHref}
+          className={cn(buttonVariants(), "mt-5 min-h-9 px-3")}
+        >
           {actionLabel}
         </Link>
       ) : null}
@@ -63,19 +72,35 @@ export function ErrorState({
   onRetry,
 }: Readonly<{ title?: string; description?: string; onRetry?: () => void }>) {
   return (
-    <section role="alert" className="flex min-h-80 flex-col items-center justify-center rounded-xl border bg-card px-6 py-12 text-center">
+    <section
+      role="alert"
+      className="flex min-h-80 flex-col items-center justify-center rounded-xl border bg-card px-6 py-12 text-center"
+    >
       <div className="flex size-10 items-center justify-center rounded-lg bg-red-50 text-red-700">
         <AlertCircle aria-hidden="true" className="size-5" />
       </div>
       <h2 className="mt-4 text-base font-semibold">{title}</h2>
-      <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
+      <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
       {onRetry ? (
-        <Button type="button" variant="outline" className="mt-5" onClick={onRetry}>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-5"
+          onClick={onRetry}
+        >
           <RotateCcw aria-hidden="true" className="size-4" />
           Try again
         </Button>
       ) : (
-        <Link href="?" className={cn(buttonVariants({ variant: "outline" }), "mt-5 min-h-9 px-3")}>
+        <Link
+          href="?"
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "mt-5 min-h-9 px-3",
+          )}
+        >
           <RotateCcw aria-hidden="true" className="size-4" />
           Try again
         </Link>

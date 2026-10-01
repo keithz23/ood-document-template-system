@@ -9,7 +9,9 @@ namespace DocumentTemplateSystem.Api.Controllers;
 [Authorize(Roles = "Admin")]
 [Route("api/admin/templates")]
 [Produces("application/json")]
-public sealed class AdminTemplatesController(AdminCatalogService service) : ControllerBase
+public sealed class AdminTemplatesController(
+    AdminCatalogService service,
+    AdminTemplateVersionService versionService) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AdminTemplateSummaryDto>), StatusCodes.Status200OK)]
@@ -76,4 +78,28 @@ public sealed class AdminTemplatesController(AdminCatalogService service) : Cont
         Guid templateId,
         CancellationToken cancellationToken) =>
         Ok(await service.DeactivateTemplateAsync(templateId, cancellationToken));
+
+    [HttpGet("{templateId:guid}/versions")]
+    [ProducesResponseType(typeof(IReadOnlyList<AdminTemplateVersionSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<AdminTemplateVersionSummaryDto>>> GetVersions(
+        Guid templateId,
+        CancellationToken cancellationToken) =>
+        Ok(await versionService.GetVersionsAsync(templateId, cancellationToken));
+
+    [HttpPost("{templateId:guid}/versions")]
+    [ProducesResponseType(typeof(AdminTemplateVersionDetailDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AdminTemplateVersionDetailDto>> CreateDraftVersion(
+        Guid templateId,
+        CancellationToken cancellationToken)
+    {
+        var result = await versionService.CreateDraftVersionAsync(templateId, cancellationToken);
+        return Created($"/api/admin/template-versions/{result.Id}", result);
+    }
 }

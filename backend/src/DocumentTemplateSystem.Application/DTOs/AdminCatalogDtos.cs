@@ -42,3 +42,32 @@ public sealed record AdminTemplateDetailDto(
 public sealed record CreateTemplateRequestDto(string Name, Guid CategoryId);
 
 public sealed record UpdateDraftTemplateRequestDto(string? Name, Guid? CategoryId);
+
+public sealed record AdminTemplateVersionDetailDto(
+    Guid Id,
+    Guid TemplateId,
+    int VersionNumber,
+    string Content,
+    ContentFormat ContentFormat,
+    VersionStatus Status,
+    bool IsCurrent,
+    int PlaceholderCount,
+    DateTimeOffset? PublishedAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+public sealed record UpdateDraftTemplateVersionRequestDto(string Content);
+
+public sealed record CreatePlaceholderRequestDto(
+    string Key,
+    string Label,
+    PlaceholderDataType DataType,
+    bool IsRequired,
+    string? DefaultValue);
+
+public sealed record UpdatePlaceholderRequestDto(
+    string Key,
+    string Label,
+    PlaceholderDataType DataType,
+    bool IsRequired,
+    string? DefaultValue);

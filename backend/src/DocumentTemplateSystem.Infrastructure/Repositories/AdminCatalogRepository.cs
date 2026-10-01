@@ -42,6 +42,16 @@ public sealed class AdminCatalogRepository(AppDbContext context) : IAdminCatalog
         return template is null ? null : MapTemplate(template);
     }
 
+    public async Task<AdminTemplateEntry?> GetTemplateByVersionIdAsync(
+        Guid templateVersionId,
+        CancellationToken cancellationToken = default)
+    {
+        var template = await TemplateQuery().SingleOrDefaultAsync(
+            candidate => candidate.Versions.Any(version => version.Id == templateVersionId),
+            cancellationToken);
+        return template is null ? null : MapTemplate(template);
+    }
+
     public Task AddCategoryAsync(
         Category category,
         CancellationToken cancellationToken = default) =>
@@ -52,10 +62,38 @@ public sealed class AdminCatalogRepository(AppDbContext context) : IAdminCatalog
         CancellationToken cancellationToken = default) =>
         context.Templates.AddAsync(template, cancellationToken).AsTask();
 
+    public Task AddTemplateVersionAsync(
+        TemplateVersion templateVersion,
+        CancellationToken cancellationToken = default) =>
+        context.TemplateVersions.AddAsync(templateVersion, cancellationToken).AsTask();
+
     public void AddAuditLog(AuditLog auditLog) => context.AuditLogs.Add(auditLog);
+
+    public void RemovePlaceholder(Placeholder placeholder) =>
+        context.Placeholders.Remove(placeholder);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         context.SaveChangesAsync(cancellationToken);
+
+    public async Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        await using var transaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        try
+        {
+            await operation(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
 
     private IQueryable<Template> TemplateQuery() => context.Templates
         .AsSplitQuery()

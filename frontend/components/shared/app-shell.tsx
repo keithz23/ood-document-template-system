@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileClock, Files, FolderCog, Menu, PanelLeft, Tags, UserRound } from "lucide-react";
+import {
+  FileClock,
+  Files,
+  FolderCog,
+  Menu,
+  PanelLeft,
+  Tags,
+  UserRound,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,11 +35,16 @@ const adminNavigation = [
 
 function ProductMark() {
   return (
-    <Link href="/templates" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40">
+    <Link
+      href="/templates"
+      className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+    >
       <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
         <PanelLeft aria-hidden="true" className="size-4" />
       </span>
-      <span className="text-sm font-semibold tracking-[-0.01em]">Document Workspace</span>
+      <span className="text-sm font-semibold tracking-[-0.01em]">
+        Document Workspace
+      </span>
     </Link>
   );
 }
@@ -45,8 +58,11 @@ function Navigation({
   isAdmin: boolean;
   onNavigate?: () => void;
 }) {
-  const renderLink = (item: (typeof navigation)[number] | (typeof adminNavigation)[number]) => {
-    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+  const renderLink = (
+    item: (typeof navigation)[number] | (typeof adminNavigation)[number],
+  ) => {
+    const isActive =
+      pathname === item.href || pathname.startsWith(`${item.href}/`);
     const Icon = item.icon;
 
     return (
@@ -93,7 +109,9 @@ function UserIdentity() {
         <UserRound aria-hidden="true" className="size-4" />
       </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{user?.fullName ?? "Signed-in user"}</p>
+        <p className="truncate text-sm font-medium">
+          {user?.fullName ?? "Signed-in user"}
+        </p>
         <p className="text-xs text-muted-foreground">
           {user?.role === "Admin" ? "Admin workspace" : "Author workspace"}
         </p>
@@ -121,7 +139,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ProductMark />
         </div>
         <div className="flex flex-1 flex-col justify-between gap-8 px-3 py-4">
-          <Navigation pathname={pathname} isAdmin={session?.user.role === "Admin"} />
+          <Navigation
+            pathname={pathname}
+            isAdmin={session?.user.role === "Admin"}
+          />
           <UserIdentity />
         </div>
       </aside>
@@ -142,8 +163,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-[min(84vw,20rem)] bg-sidebar">
           <SheetHeader className="border-b py-5">
-            <SheetTitle><ProductMark /></SheetTitle>
-            <SheetDescription className="sr-only">Primary navigation</SheetDescription>
+            <SheetTitle>
+              <ProductMark />
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              Primary navigation
+            </SheetDescription>
           </SheetHeader>
           <div className="flex flex-1 flex-col justify-between gap-8 px-3 pb-4">
             <Navigation

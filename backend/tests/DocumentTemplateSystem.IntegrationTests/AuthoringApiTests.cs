@@ -125,7 +125,7 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
     }
 
     [Fact]
-    public async Task Swagger_DescribesLoginAndPhase3BOperationsWithBearerSecurity()
+    public async Task Swagger_DescribesApprovedOperationsWithBearerSecurity()
     {
         using var client = _factory.CreateClient();
 
@@ -133,7 +133,7 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             await client.GetStringAsync("/swagger/v1/swagger.json"));
         var paths = document.RootElement.GetProperty("paths");
 
-        Assert.Equal(19, paths.EnumerateObject().Count());
+        Assert.Equal(25, paths.EnumerateObject().Count());
         Assert.True(paths.TryGetProperty("/api/auth/login", out var loginPath));
         Assert.True(paths.TryGetProperty("/api/auth/me", out _));
         Assert.True(paths.TryGetProperty("/api/templates", out _));
@@ -154,6 +154,32 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.True(paths.TryGetProperty("/api/admin/categories/{categoryId}", out _));
         Assert.True(paths.TryGetProperty("/api/admin/templates", out _));
         Assert.True(paths.TryGetProperty("/api/admin/templates/{templateId}", out _));
+        Assert.True(paths.TryGetProperty(
+            "/api/admin/templates/{templateId}/versions",
+            out var versionsPath));
+        Assert.True(versionsPath.TryGetProperty("get", out _));
+        Assert.True(versionsPath.TryGetProperty("post", out _));
+        Assert.True(paths.TryGetProperty(
+            "/api/admin/template-versions/{versionId}",
+            out var versionPath));
+        Assert.True(versionPath.TryGetProperty("get", out _));
+        Assert.True(versionPath.TryGetProperty("patch", out _));
+        Assert.True(paths.TryGetProperty(
+            "/api/admin/template-versions/{versionId}/publish",
+            out _));
+        Assert.True(paths.TryGetProperty(
+            "/api/admin/template-versions/{versionId}/set-current",
+            out _));
+        Assert.True(paths.TryGetProperty(
+            "/api/admin/template-versions/{versionId}/placeholders",
+            out var placeholdersPath));
+        Assert.True(placeholdersPath.TryGetProperty("get", out _));
+        Assert.True(placeholdersPath.TryGetProperty("post", out _));
+        Assert.True(paths.TryGetProperty(
+            "/api/admin/template-versions/{versionId}/placeholders/{placeholderId}",
+            out var placeholderPath));
+        Assert.True(placeholderPath.TryGetProperty("patch", out _));
+        Assert.True(placeholderPath.TryGetProperty("delete", out _));
 
         var bearer = document.RootElement
             .GetProperty("components")

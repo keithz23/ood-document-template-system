@@ -1,12 +1,12 @@
-# API Contract — Authoring and Phase 6A Administration
+# API Contract — Authoring and Phase 6 Administration
 
 Status: **approved implementation contract**.
 
 This document derives the minimum REST contract for the current author-facing
 frontend and the approved rules in `AGENTS.md` and `PRODUCT.md`. Phase 6A adds
-only Category and Template metadata administration; later administration,
-sharing, collaboration, registration, password reset, and token refresh remain
-outside the contract.
+Category and Template metadata administration. Phase 6B adds TemplateVersion
+and Placeholder administration. Later administration, sharing, collaboration,
+registration, password reset, and token refresh remain outside the contract.
 
 `AGENTS.md` section 7 is the only approved domain-model source currently present
 in the repository. No separate ERD or Class Diagram file was found. If one is
@@ -361,6 +361,16 @@ approved model; it is not a new Document entity field.
 | Finalize document | `POST` | `/api/documents/{documentId}/finalize` |
 | Download document | `GET` | `/api/documents/{documentId}/download` |
 | Document history | `GET` | `/api/documents` |
+| Admin version list | `GET` | `/api/admin/templates/{templateId}/versions` |
+| Admin create Draft version | `POST` | `/api/admin/templates/{templateId}/versions` |
+| Admin version detail | `GET` | `/api/admin/template-versions/{versionId}` |
+| Admin update Draft version | `PATCH` | `/api/admin/template-versions/{versionId}` |
+| Admin publish version | `POST` | `/api/admin/template-versions/{versionId}/publish` |
+| Admin set Current version | `POST` | `/api/admin/template-versions/{versionId}/set-current` |
+| Admin placeholder list | `GET` | `/api/admin/template-versions/{versionId}/placeholders` |
+| Admin create placeholder | `POST` | `/api/admin/template-versions/{versionId}/placeholders` |
+| Admin update placeholder | `PATCH` | `/api/admin/template-versions/{versionId}/placeholders/{placeholderId}` |
+| Admin remove placeholder | `DELETE` | `/api/admin/template-versions/{versionId}/placeholders/{placeholderId}` |
 
 ## 5. Authentication endpoints
 
@@ -1162,8 +1172,7 @@ This contract does not define:
 - registration, logout, refresh tokens, password reset, or profile editing;
 - inactive/draft template browsing for authors;
 - historical template-version browsing outside retained Document history;
-- template-version publishing or editing, placeholder administration, user
-  administration, or audit-log endpoints and UI;
+- user administration or audit-log endpoints and UI;
 - sharing, comments, teams, collaboration, approval chains, or cross-user access;
 - autosave guarantees, bulk operations, server sorting, pagination, or search;
 - template mutation or editing Published versions;
@@ -1584,3 +1593,301 @@ Documents.
 
 **Error cases:** `TEMPLATE_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
 (`401`), `FORBIDDEN` (`403`).
+
+## 13. Phase 6B admin DTOs
+
+Phase 6B DTOs remain separate from domain entities. TemplateVersion content is
+managed as persisted source text; this contract does not select or imply a rich
+text, WYSIWYG, block, or JSON editor.
+
+```text
+AdminTemplateVersionDetailDto
+  id: string
+  templateId: string
+  versionNumber: integer
+  content: string
+  contentFormat: "Html" | "Json"
+  status: "Draft" | "Published"
+  isCurrent: boolean
+  placeholderCount: integer
+  publishedAt: string | null (ISO 8601 UTC)
+  createdAt: string (ISO 8601 UTC)
+  updatedAt: string (ISO 8601 UTC)
+
+UpdateDraftTemplateVersionRequestDto
+  content: string
+
+CreatePlaceholderRequestDto
+  key: string
+  label: string
+  dataType: "Text" | "Number" | "Date" | "Email"
+  isRequired: boolean
+  defaultValue: string | null
+
+UpdatePlaceholderRequestDto
+  key: string
+  label: string
+  dataType: "Text" | "Number" | "Date" | "Email"
+  isRequired: boolean
+  defaultValue: string | null
+```
+
+`AdminTemplateVersionSummaryDto` and `PlaceholderDto` retain the shapes defined
+in sections 10 and 3.9. A null `defaultValue` means that no default is defined.
+The Placeholder update request is a complete editable definition even though
+the route uses `PATCH`; this allows `defaultValue: null` to explicitly clear an
+existing default without introducing an optional-value transport wrapper.
+
+## 14. TemplateVersion and Placeholder administration
+
+Every endpoint in this section requires a Bearer token with role `Admin`. An
+authenticated `User` receives `403 Forbidden`. Every successful mutation writes
+an `AuditLog` in the same unit of work as the governed change.
+
+Published TemplateVersions are retained and immutable. There is no
+TemplateVersion delete endpoint. Publishing and selecting the Current version
+are separate actions; publishing never changes Current state.
+
+### 14.1 List versions for a Template
+
+**Method and path:** `GET /api/admin/templates/{templateId}/versions`
+
+**Route parameters:** `templateId`. No query parameters.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminTemplateVersionSummaryDto[]`, ordered by descending
+`versionNumber` and including Draft and Published versions.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`).
+
+### 14.2 Create a Draft TemplateVersion
+
+**Method and path:** `POST /api/admin/templates/{templateId}/versions`
+
+**Route parameters:** `templateId`. No query parameters or request body.
+
+**Response DTO:** `AdminTemplateVersionDetailDto` with status `Draft` and
+`isCurrent: false`.
+
+**Validation and business rules**
+
+- The Template must exist.
+- The next version number is generated within the Template aggregate.
+- When a Current version exists, the new Draft copies that version's content,
+  content format, and Placeholder definitions.
+- Otherwise, it copies those values from the version with the highest
+  `versionNumber`.
+- Copied Placeholders receive new identities and belong to the new version.
+- The source version and its Placeholders are not modified.
+- The new Draft is never Current.
+
+**HTTP status codes:** `201 Created`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+On success, include
+`Location: /api/admin/template-versions/{versionId}`.
+
+**Error cases:** `TEMPLATE_NOT_FOUND` (`404`), `AUTHENTICATION_REQUIRED`
+(`401`), `FORBIDDEN` (`403`). A Template without any source version violates
+the approved aggregate invariant and is treated as a server data-integrity
+failure.
+
+### 14.3 View TemplateVersion detail
+
+**Method and path:** `GET /api/admin/template-versions/{versionId}`
+
+**Route parameters:** `versionId`. No query parameters.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminTemplateVersionDetailDto`.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Error cases:** `TEMPLATE_VERSION_NOT_FOUND` (`404`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 14.4 Update Draft TemplateVersion content
+
+**Method and path:** `PATCH /api/admin/template-versions/{versionId}`
+
+**Route parameters:** `versionId`. No query parameters.
+
+**Request DTO:** `UpdateDraftTemplateVersionRequestDto`.
+
+**Response DTO:** updated `AdminTemplateVersionDetailDto`.
+
+**Validation and business rules**
+
+- `content` is required and may be an empty string.
+- Only a Draft version may be updated.
+- `contentFormat` is retained from the existing version and is not accepted in
+  this request.
+- Published versions are immutable.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `409 Conflict`,
+`500 Internal Server Error`.
+
+**Error cases:** `VALIDATION_FAILED` (`400`),
+`TEMPLATE_VERSION_NOT_FOUND` (`404`), `TEMPLATE_VERSION_PUBLISHED` (`409`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 14.5 Publish a Draft TemplateVersion
+
+**Method and path:**
+`POST /api/admin/template-versions/{versionId}/publish`
+
+**Route parameters:** `versionId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminTemplateVersionDetailDto` with status
+`Published`, non-null `publishedAt`, and unchanged `isCurrent`.
+
+**Validation and business rules**
+
+- Only a Draft version may be published.
+- Every non-null Placeholder default value must pass the Strategy validator for
+  its configured data type before publication.
+- Publishing does not make the version Current.
+- After publication, content and Placeholder definitions are immutable.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `409 Conflict`, `422 Unprocessable Entity`,
+`500 Internal Server Error`.
+
+**Error cases:** `TEMPLATE_VERSION_NOT_FOUND` (`404`),
+`TEMPLATE_VERSION_PUBLISHED` (`409`),
+`INVALID_PLACEHOLDER_DEFAULTS` (`422`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 14.6 Set a Published TemplateVersion as Current
+
+**Method and path:**
+`POST /api/admin/template-versions/{versionId}/set-current`
+
+**Route parameters:** `versionId`. No query parameters or request body.
+
+**Response DTO:** updated `AdminTemplateVersionDetailDto` with
+`isCurrent: true`.
+
+**Validation and business rules**
+
+- Only a Published version may become Current. A Draft request returns
+  `TEMPLATE_VERSION_NOT_PUBLISHED`.
+- The operation clears the previous Current version before setting the selected
+  Published version.
+- Clearing the previous Current version, setting the new Current version, and
+  writing the AuditLog occur atomically.
+- Repeating the operation for the existing Current version is idempotent.
+- A Template has at most one Current version.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
+
+**Error cases:** `TEMPLATE_VERSION_NOT_FOUND` (`404`),
+`TEMPLATE_VERSION_NOT_PUBLISHED` (`409`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 14.7 List Placeholders for a TemplateVersion
+
+**Method and path:**
+`GET /api/admin/template-versions/{versionId}/placeholders`
+
+**Route parameters:** `versionId`. No query parameters.
+
+**Request DTO:** None.
+
+**Response DTO:** `PlaceholderDto[]`, ordered by `key`. Draft and Published
+versions are both readable. An empty version returns `200 OK` with `[]`.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `500 Internal Server Error`.
+
+**Error cases:** `TEMPLATE_VERSION_NOT_FOUND` (`404`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 14.8 Create a Placeholder
+
+**Method and path:**
+`POST /api/admin/template-versions/{versionId}/placeholders`
+
+**Route parameters:** `versionId`. No query parameters.
+
+**Request DTO:** `CreatePlaceholderRequestDto`.
+
+**Response DTO:** `PlaceholderDto`.
+
+**Validation and business rules**
+
+- Only a Draft version may receive a Placeholder.
+- `key` and `label` are required after trimming.
+- `dataType` must be `Text`, `Number`, `Date`, or `Email`.
+- `(TemplateVersionId, Key)` must remain unique.
+- `defaultValue` is optional. When non-null, including an empty string, it must
+  pass the Strategy validator for `dataType`.
+- `isRequired` does not require a default value.
+
+**HTTP status codes:** `201 Created`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `409 Conflict`,
+`500 Internal Server Error`.
+
+On success, include
+`Location: /api/admin/template-versions/{versionId}/placeholders/{placeholderId}`.
+
+**Error cases:** `VALIDATION_FAILED` (`400`, including an
+`INVALID_DEFAULT_VALUE` field error), `TEMPLATE_VERSION_NOT_FOUND` (`404`),
+`TEMPLATE_VERSION_PUBLISHED` (`409`), `PLACEHOLDER_KEY_CONFLICT` (`409`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 14.9 Update a Placeholder
+
+**Method and path:**
+`PATCH /api/admin/template-versions/{versionId}/placeholders/{placeholderId}`
+
+**Route parameters:** `versionId` and `placeholderId`. No query parameters.
+
+**Request DTO:** `UpdatePlaceholderRequestDto`. All editable fields are
+required; `defaultValue` may be null.
+
+**Response DTO:** updated `PlaceholderDto`.
+
+**Validation and business rules:** The create rules apply. The Placeholder must
+belong to `versionId`, and only a Draft version may be changed. The uniqueness
+check excludes the Placeholder being updated.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `409 Conflict`,
+`500 Internal Server Error`.
+
+**Error cases:** `VALIDATION_FAILED` (`400`, including an
+`INVALID_DEFAULT_VALUE` field error), `TEMPLATE_VERSION_NOT_FOUND` (`404`),
+`PLACEHOLDER_NOT_FOUND` (`404`), `TEMPLATE_VERSION_PUBLISHED` (`409`),
+`PLACEHOLDER_KEY_CONFLICT` (`409`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 14.10 Remove a Placeholder
+
+**Method and path:**
+`DELETE /api/admin/template-versions/{versionId}/placeholders/{placeholderId}`
+
+**Route parameters:** `versionId` and `placeholderId`. No query parameters or
+request body.
+
+**Response DTO:** None.
+
+**Validation and business rules:** The Placeholder must belong to `versionId`.
+Only a Draft version may remove a Placeholder. Published definitions are never
+deleted or changed.
+
+**HTTP status codes:** `204 No Content`, `401 Unauthorized`, `403 Forbidden`,
+`404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
+
+**Error cases:** `TEMPLATE_VERSION_NOT_FOUND` (`404`),
+`PLACEHOLDER_NOT_FOUND` (`404`), `TEMPLATE_VERSION_PUBLISHED` (`409`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).

@@ -58,7 +58,7 @@ public static class ServiceCollectionExtensions
             {
                 Title = "Document Template System API",
                 Version = "v1",
-                Description = "Author document workflows and Phase 6A catalog administration."
+                Description = "Author document workflows and Phase 6 administration."
             });
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
@@ -80,6 +80,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<TemplateService>();
         services.AddScoped<DocumentService>();
         services.AddScoped<AdminCatalogService>();
+        services.AddScoped<AdminTemplateVersionService>();
         services.AddSingleton<IDocumentRenderer, HtmlDocumentRenderer>();
         services.AddSingleton<PlaceholderValidator>();
         services

@@ -118,9 +118,104 @@ public sealed class AdminCatalogApiTests
         await using var factory = new AdminCatalogApiFactory();
         using var client = CreateClient(factory, TestAuthenticationHandler.AuthenticationScheme);
 
-        var response = await client.GetAsync("/api/admin/templates");
+        var response = await client.GetAsync(
+            $"/api/admin/templates/{factory.ActiveTemplateId}/versions");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_TemplateVersionWorkflow_ManagesDraftPlaceholdersAndCurrentVersion()
+    {
+        await using var factory = new AdminCatalogApiFactory();
+        using var client = CreateClient(factory, TestAuthenticationHandler.AdminAuthenticationScheme);
+
+        var createDraftResponse = await client.PostAsync(
+            $"/api/admin/templates/{factory.ActiveTemplateId}/versions",
+            null);
+        Assert.Equal(HttpStatusCode.Created, createDraftResponse.StatusCode);
+        var draft = await createDraftResponse.Content.ReadFromJsonAsync<AdminTemplateVersionDetailDto>(
+            JsonOptions);
+        Assert.NotNull(draft);
+        Assert.Equal(VersionStatus.Draft, draft.Status);
+        Assert.False(draft.IsCurrent);
+        Assert.Equal("<p>{{client_name}}</p>", draft.Content);
+        Assert.Equal(1, draft.PlaceholderCount);
+
+        using var updateVersionRequest = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/admin/template-versions/{draft.Id}")
+        {
+            Content = JsonContent.Create(
+                new UpdateDraftTemplateVersionRequestDto("<p>Updated {{client_name}}</p>"),
+                options: JsonOptions)
+        };
+        var updateVersionResponse = await client.SendAsync(updateVersionRequest);
+        Assert.Equal(HttpStatusCode.OK, updateVersionResponse.StatusCode);
+
+        var createPlaceholderRequest = new CreatePlaceholderRequestDto(
+            "project_total",
+            "Project total",
+            PlaceholderDataType.Number,
+            true,
+            "10.50");
+        var createPlaceholderResponse = await client.PostAsJsonAsync(
+            $"/api/admin/template-versions/{draft.Id}/placeholders",
+            createPlaceholderRequest,
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Created, createPlaceholderResponse.StatusCode);
+        var placeholder = await createPlaceholderResponse.Content.ReadFromJsonAsync<PlaceholderDto>(
+            JsonOptions);
+        Assert.NotNull(placeholder);
+
+        var duplicateResponse = await client.PostAsJsonAsync(
+            $"/api/admin/template-versions/{draft.Id}/placeholders",
+            createPlaceholderRequest,
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
+
+        using var updatePlaceholderRequest = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/admin/template-versions/{draft.Id}/placeholders/{placeholder.Id}")
+        {
+            Content = JsonContent.Create(
+                new UpdatePlaceholderRequestDto(
+                    "project_value",
+                    "Project value",
+                    PlaceholderDataType.Number,
+                    false,
+                    "25"),
+                options: JsonOptions)
+        };
+        var updatePlaceholderResponse = await client.SendAsync(updatePlaceholderRequest);
+        Assert.Equal(HttpStatusCode.OK, updatePlaceholderResponse.StatusCode);
+
+        var removePlaceholderResponse = await client.DeleteAsync(
+            $"/api/admin/template-versions/{draft.Id}/placeholders/{placeholder.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, removePlaceholderResponse.StatusCode);
+
+        var oldCurrent = factory.Repository.Templates.Single().Versions.Single(version => version.IsCurrent);
+        var publishResponse = await client.PostAsync(
+            $"/api/admin/template-versions/{draft.Id}/publish",
+            null);
+        Assert.Equal(HttpStatusCode.OK, publishResponse.StatusCode);
+        var published = await publishResponse.Content.ReadFromJsonAsync<AdminTemplateVersionDetailDto>(
+            JsonOptions);
+        Assert.False(published?.IsCurrent);
+
+        var publishedMutationResponse = await client.PostAsJsonAsync(
+            $"/api/admin/template-versions/{draft.Id}/placeholders",
+            createPlaceholderRequest,
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.Conflict, publishedMutationResponse.StatusCode);
+
+        var setCurrentResponse = await client.PostAsync(
+            $"/api/admin/template-versions/{draft.Id}/set-current",
+            null);
+        Assert.Equal(HttpStatusCode.OK, setCurrentResponse.StatusCode);
+        Assert.False(oldCurrent.IsCurrent);
+        Assert.True(factory.Repository.Templates.Single().Versions.Single(
+            version => version.Id == draft.Id).IsCurrent);
     }
 
     private static HttpClient CreateClient(
@@ -188,8 +283,17 @@ public sealed class InMemoryAdminCatalogRepository : IAdminCatalogRepository
         var creator = TestAuthenticationHandler.AdminId;
         var category = new Category("Business", creator);
         Categories.Add(category);
-        var template = new Template("Agreement", category.Id, creator);
+        var template = new Template(
+            "Agreement",
+            category.Id,
+            creator,
+            "<p>{{client_name}}</p>");
         var version = template.Versions.Single();
+        version.AddPlaceholder(
+            "client_name",
+            "Client name",
+            PlaceholderDataType.Text,
+            true);
         version.Publish(creator);
         template.SetCurrentVersion(version.Id);
         template.Activate();
@@ -224,6 +328,15 @@ public sealed class InMemoryAdminCatalogRepository : IAdminCatalogRepository
         return Task.FromResult(template is null ? null : MapTemplate(template));
     }
 
+    public Task<AdminTemplateEntry?> GetTemplateByVersionIdAsync(
+        Guid templateVersionId,
+        CancellationToken cancellationToken = default)
+    {
+        var template = Templates.SingleOrDefault(item =>
+            item.Versions.Any(version => version.Id == templateVersionId));
+        return Task.FromResult(template is null ? null : MapTemplate(template));
+    }
+
     public Task AddCategoryAsync(
         Category category,
         CancellationToken cancellationToken = default)
@@ -240,10 +353,24 @@ public sealed class InMemoryAdminCatalogRepository : IAdminCatalogRepository
         return Task.CompletedTask;
     }
 
+    public Task AddTemplateVersionAsync(
+        TemplateVersion templateVersion,
+        CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
     public void AddAuditLog(AuditLog auditLog) => AuditLogs.Add(auditLog);
+
+    public void RemovePlaceholder(Placeholder placeholder)
+    {
+    }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
+
+    public Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken = default) =>
+        operation(cancellationToken);
 
     private AdminTemplateEntry MapTemplate(Template template) =>
         new(

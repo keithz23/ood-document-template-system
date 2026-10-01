@@ -130,6 +130,14 @@ public sealed class Template
         }
     }
 
+    public void ClearCurrentVersion()
+    {
+        foreach (var existingVersion in _versions)
+        {
+            existingVersion.SetCurrent(false);
+        }
+    }
+
     public void Activate()
     {
         if (!_versions.Any(version => version.IsCurrent && version.Status == VersionStatus.Published))

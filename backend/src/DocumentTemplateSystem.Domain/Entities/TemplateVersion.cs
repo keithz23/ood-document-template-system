@@ -123,6 +123,43 @@ public sealed class TemplateVersion : IPrototype<Document>
         return placeholder;
     }
 
+    public Placeholder UpdatePlaceholder(
+        Guid placeholderId,
+        string key,
+        string label,
+        PlaceholderDataType dataType,
+        bool isRequired,
+        string? defaultValue = null)
+    {
+        EnsureDraft();
+
+        var placeholder = _placeholders.SingleOrDefault(candidate => candidate.Id == placeholderId)
+            ?? throw new InvalidOperationException(
+                "The placeholder does not belong to this template version.");
+        var normalizedKey = key.Trim();
+        if (_placeholders.Any(candidate =>
+                candidate.Id != placeholderId
+                && string.Equals(candidate.Key, normalizedKey, StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                "Placeholder keys must be unique within a template version.");
+        }
+
+        placeholder.Update(key, label, dataType, isRequired, defaultValue);
+        return placeholder;
+    }
+
+    public Placeholder RemovePlaceholder(Guid placeholderId)
+    {
+        EnsureDraft();
+
+        var placeholder = _placeholders.SingleOrDefault(candidate => candidate.Id == placeholderId)
+            ?? throw new InvalidOperationException(
+                "The placeholder does not belong to this template version.");
+        _placeholders.Remove(placeholder);
+        return placeholder;
+    }
+
     public void Publish(Guid publishedBy, DateTimeOffset? publishedAt = null)
     {
         EnsureDraft();
