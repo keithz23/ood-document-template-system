@@ -5,6 +5,8 @@ import {
   ArrowLeft,
   CheckCircle2,
   CircleAlert,
+  Eye,
+  FilePenLine,
   LoaderCircle,
   Pencil,
   Plus,
@@ -22,7 +24,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { ErrorState, PageLoadingState } from "@/components/shared/data-state";
 import { PageHeader } from "@/components/shared/page-header";
 import {
@@ -38,12 +39,15 @@ import {
 } from "@/features/admin/api/admin-queries";
 import { AdminStatusBadge } from "@/features/admin/components/admin-status-badge";
 import { PlaceholderFormDialog } from "@/features/admin/components/placeholder-form-dialog";
+import { RichTemplateEditor } from "@/features/admin/components/rich-template-editor";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/services/api-errors";
 import type {
   CreatePlaceholderRequestDto,
   PlaceholderDto,
 } from "@/types/api";
+
+type ContentMode = "edit" | "preview";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -72,6 +76,7 @@ export function AdminTemplateVersionScreen({
   const updatePlaceholder = useUpdateAdminPlaceholder(versionId);
   const removePlaceholder = useRemoveAdminPlaceholder(versionId);
   const [contentDraft, setContentDraft] = useState<string | null>(null);
+  const [contentMode, setContentMode] = useState<ContentMode>("edit");
   const [publishOpen, setPublishOpen] = useState(false);
   const [placeholderOpen, setPlaceholderOpen] = useState(false);
   const [editingPlaceholder, setEditingPlaceholder] =
@@ -116,6 +121,10 @@ export function AdminTemplateVersionScreen({
   }
 
   async function publish() {
+    if (contentChanged) {
+      await updateVersion.mutateAsync({ content });
+      setContentDraft(null);
+    }
     const result = await publishVersion.mutateAsync(versionId);
     setPublishOpen(false);
     setSuccessMessage(
@@ -173,7 +182,15 @@ export function AdminTemplateVersionScreen({
               <AdminStatusBadge label="Current" tone="positive" />
             ) : null}
             {isDraft ? (
-              <Button type="button" onClick={() => setPublishOpen(true)}>
+              <Button
+                type="button"
+                disabled={updateVersion.isPending || publishVersion.isPending}
+                onClick={() => {
+                  updateVersion.reset();
+                  publishVersion.reset();
+                  setPublishOpen(true);
+                }}
+              >
                 Publish
               </Button>
             ) : !version.isCurrent ? (
@@ -231,33 +248,80 @@ export function AdminTemplateVersionScreen({
               Content
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              HTML source for this version. Rich editing is not enabled yet.
+              Compose the reusable document content for this version.
             </p>
           </div>
-          {isDraft ? (
-            <Button
-              type="button"
-              size="sm"
-              disabled={!contentChanged || updateVersion.isPending}
-              onClick={saveContent}
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className="grid grid-cols-2 rounded-lg bg-muted p-1"
+              aria-label="Content view"
             >
-              {updateVersion.isPending ? (
-                <LoaderCircle aria-hidden="true" className="animate-spin" />
-              ) : (
-                <Save aria-hidden="true" />
-              )}
-              {updateVersion.isPending ? "Saving…" : "Save content"}
-            </Button>
-          ) : null}
+              <button
+                type="button"
+                aria-pressed={contentMode === "edit"}
+                onClick={() => setContentMode("edit")}
+                className={cn(
+                  "inline-flex h-7 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+                  contentMode === "edit"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <FilePenLine aria-hidden="true" className="size-3.5" />
+                Editor
+              </button>
+              <button
+                type="button"
+                aria-pressed={contentMode === "preview"}
+                onClick={() => setContentMode("preview")}
+                className={cn(
+                  "inline-flex h-7 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+                  contentMode === "preview"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Eye aria-hidden="true" className="size-3.5" />
+                Preview
+              </button>
+            </div>
+            {isDraft ? (
+              <Button
+                type="button"
+                size="sm"
+                disabled={!contentChanged || updateVersion.isPending}
+                onClick={saveContent}
+              >
+                {updateVersion.isPending ? (
+                  <LoaderCircle aria-hidden="true" className="animate-spin" />
+                ) : (
+                  <Save aria-hidden="true" />
+                )}
+                {updateVersion.isPending ? "Saving…" : "Save Draft"}
+              </Button>
+            ) : null}
+          </div>
         </div>
-        <div className="p-5">
-          <Textarea
-            value={content}
-            disabled={!isDraft}
-            onChange={(event) => setContentDraft(event.target.value)}
-            aria-label="Template version content"
-            className="min-h-64 resize-y font-mono leading-6"
-          />
+        <div className="p-3 sm:p-5">
+          <div className={cn(contentMode === "preview" && "hidden")}>
+            <RichTemplateEditor
+              content={content}
+              savedContent={version.content}
+              editable={isDraft}
+              placeholders={placeholders}
+              onChange={setContentDraft}
+            />
+          </div>
+          {contentMode === "preview" ? (
+            <div className="bg-slate-100 p-3 sm:p-5">
+              <iframe
+                title="Template preview"
+                sandbox=""
+                srcDoc={content}
+                className="mx-auto min-h-[680px] w-full max-w-[816px] bg-white shadow-sm"
+              />
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -398,26 +462,41 @@ export function AdminTemplateVersionScreen({
             <DialogDescription>
               Publishing makes its content and placeholders immutable. It will not
               become Current automatically.
+              {contentChanged ? " Unsaved editor changes will be saved first." : ""}
             </DialogDescription>
           </DialogHeader>
+          {updateVersion.isError || publishVersion.isError ? (
+            <Alert variant="destructive" role="alert">
+              <CircleAlert aria-hidden="true" />
+              <AlertTitle>Version could not be published</AlertTitle>
+              <AlertDescription>
+                {getApiErrorMessage(
+                  updateVersion.error ?? publishVersion.error,
+                  "Review the version state and try again.",
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              disabled={publishVersion.isPending}
+              disabled={publishVersion.isPending || updateVersion.isPending}
               onClick={() => setPublishOpen(false)}
             >
               Cancel
             </Button>
             <Button
               type="button"
-              disabled={publishVersion.isPending}
+              disabled={publishVersion.isPending || updateVersion.isPending}
               onClick={publish}
             >
-              {publishVersion.isPending ? (
+              {publishVersion.isPending || updateVersion.isPending ? (
                 <LoaderCircle aria-hidden="true" className="animate-spin" />
               ) : null}
-              {publishVersion.isPending ? "Publishing…" : "Publish version"}
+              {publishVersion.isPending || updateVersion.isPending
+                ? "Publishing…"
+                : "Publish version"}
             </Button>
           </DialogFooter>
         </DialogContent>
