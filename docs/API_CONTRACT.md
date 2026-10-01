@@ -1,13 +1,16 @@
-# API Contract — Authoring and Phase 6 Administration
+# API Contract — Integrated Authoring and Administration
 
 Status: **approved implementation contract**.
 
-This document derives the minimum REST contract for the current author-facing
-frontend and the approved rules in `AGENTS.md` and `PRODUCT.md`. Phase 6A adds
-Category and Template metadata administration. Phase 6B/6C add TemplateVersion
-and Placeholder administration. Phase 6D adds User administration and read-only
-Audit Log access. Sharing, collaboration, registration, password reset, and
-token refresh remain outside the contract.
+This document is the implemented REST contract through Phase 6D and the Phase 7
+QA checkpoint. It covers the author workflow plus Category, Template,
+TemplateVersion, Placeholder, User, and read-only Audit Log administration.
+Phase 7 does not declare the API feature-complete or production-ready.
+
+Registration/logout (planned Phase 6E), Admin user creation (planned Phase 6G),
+optional permission-based authorization, password reset, and token refresh
+remain outside this contract. They require contract updates before
+implementation.
 
 `AGENTS.md` section 7 is the only approved domain-model source currently present
 in the repository. No separate ERD or Class Diagram file was found. If one is
@@ -38,56 +41,61 @@ added later and conflicts with this document, the decision priority in
   category filtering, status filtering, sorting, and pagination are therefore
   intentionally absent from the server contract in this first slice.
 
-## 2. Conflicts and unresolved decisions
+## 2. Integration decisions and remaining constraints
 
-These points must not be silently encoded into entities or persistence:
+The original frontend mock shape exposed several conflicts with the approved
+domain. Integration resolved them at the DTO/UI boundary as recorded below;
+the mock modules are no longer part of the application. These decisions must
+not be silently re-encoded into entities or persistence.
 
-1. **Template description:** `TemplateSummary` and `TemplateDetail` in the mock
-   frontend require `description`, but the approved `Template` and
+1. **Template description:** the original mock summaries required
+   `description`, but the approved `Template` and
    `TemplateVersion` models contain no such field. The normative DTOs below do
-   not expose a description. The frontend must omit that copy during integration
-   unless the domain model is explicitly amended or an approved projection
-   source is identified.
-2. **Template updated date:** the mock exposes `TemplateSummary.updatedAt`, but
+   not expose a description. The integrated frontend omits that copy unless the
+   domain model is explicitly amended or an approved projection source is
+   identified.
+2. **Template updated date:** the original mock exposed `updatedAt`, but
    `Template` has no `UpdatedAt`. The contract exposes the current version's
    `updatedAt` under `currentVersion`; it must not be mislabeled as a template
    modification timestamp.
-3. **Fixed categories:** the mock hard-codes `Business`, `Finance`, `Human
-   resources`, and `Operations` as a TypeScript union. The approved model treats
-   Category as managed data. DTOs therefore return `{ id, name }`; the client
-   must not assume a closed category enum.
-4. **Placeholder examples:** the mock has `PlaceholderDefinition.example`, but
+3. **Fixed categories:** the original mock hard-coded `Business`, `Finance`,
+   `Human resources`, and `Operations` as a TypeScript union. The approved model
+   treats Category as managed data. DTOs therefore return `{ id, name }`; the
+   client must not assume a closed category enum.
+4. **Placeholder examples:** the original mock had an `example` field, but
    the approved Placeholder has only `DefaultValue?`. The API does not expose
    `example`. A default value may be shown as a default, not relabeled as an
    example.
-5. **Identifier shape:** mock template/document IDs are readable slugs. The
+5. **Identifier shape:** original mock IDs were readable slugs. The
    approved model specifies only `Id`. API IDs remain opaque.
-6. **Placeholder-value shape:** the mock uses `Record<placeholderKey, value>`.
+6. **Placeholder-value shape:** the original mock used
+   `Record<placeholderKey, value>`.
    The approved model requires `PlaceholderId?`, key/label/data-type snapshots,
    and value. Document responses therefore return an array of snapshot DTOs.
    A frontend adapter may build a key/value map for form state but must retain
    the full DTO for history.
-7. **Invalid finalized examples:** some mocked Finalized documents have empty
-   placeholder maps even though their source templates contain required fields.
-   Such records violate the approved finalization rules and are not valid API
-   examples.
-8. **Preview behavior:** the mock locally substitutes values and leaves tokens
-   visible when required values are absent. The approved rules require
+7. **Invalid finalized examples:** some original mocked Finalized documents had
+   empty placeholder maps even though their source templates contain required
+   fields. Such records violate the approved finalization rules and are not
+   valid API examples.
+8. **Preview behavior:** the original mock locally substituted values and left
+   tokens visible when required values were absent. The approved rules require
    placeholder validation before rendering. The API preview operation therefore
    returns `422` rather than rendering invalid required or typed values.
-9. **Content representation:** mock content is plain text containing
+9. **Content representation:** original mock content was plain text containing
    `{{placeholder_key}}` tokens while the approved initial persisted format is
-   `Html`. The API contract uses `contentFormat: "Html"`. The exact editor and
-   token-to-Composite parsing mechanism remains unresolved and is not defined
-   here.
+   `Html`. The API uses `contentFormat: "Html"`. The Admin template editor now
+   edits HTML through TipTap. Phase 6F must separately define rich-text editing
+   for author-created Documents without changing the transport format or
+   mutating the source TemplateVersion.
 10. **Download format (resolved):** HTML is the only approved MVP export
     format. Downloads use the `.html` extension and
     `text/html; charset=utf-8`. PDF and DOCX are outside this slice.
 11. **Download lifecycle (resolved):** both Draft and Finalized documents may
     be downloaded. The mock's former Finalized-only presentation is not a
     business rule.
-12. **User identity:** the shell hard-codes a user name and does not implement
-    authentication UI. `/api/auth/me` supplies the real shell identity.
+12. **User identity:** `/api/auth/me` supplies the authenticated shell identity;
+    the original hard-coded identity has been removed.
 
 ## 3. Shared DTOs
 
@@ -1145,10 +1153,10 @@ Authorization: Bearer <access-token>
 
 ## 8. Frontend integration mapping
 
-The future frontend API layer should map DTOs rather than changing domain or
-transport contracts to mirror the existing mocks:
+The implemented frontend API layer maps DTOs rather than changing domain or
+transport contracts to mirror the retired mock shape:
 
-| Current mock field/behavior | API source or required change |
+| Original mock field/behavior | Implemented API source/change |
 |---|---|
 | `TemplateSummary.id` slug | Map from opaque `TemplateGalleryItemDto.id` |
 | `category` string | Display `category.name`; filter by `category.id` locally |
@@ -1170,14 +1178,18 @@ transport contracts to mirror the existing mocks:
 
 This contract does not define:
 
-- registration, logout, refresh tokens, password reset, or profile editing;
+- registration or logout (planned Phase 6E), refresh tokens, password reset, or
+  profile editing;
 - inactive/draft template browsing for authors;
 - historical template-version browsing outside retained Document history;
-- user creation, password administration, or Audit Log mutation;
+- Admin user creation (planned Phase 6G), password administration, or Audit Log
+  mutation;
 - sharing, comments, teams, collaboration, approval chains, or cross-user access;
 - autosave guarantees, bulk operations, server sorting, pagination, or search;
 - template mutation or editing Published versions;
-- an editor technology or a JSON content editor;
+- rich-text editing for author-created Documents (planned Phase 6F) or a JSON
+  content editor;
+- fine-grained permission-based authorization;
 - PDF or DOCX export.
 
 Those capabilities require separate approval and contract work.

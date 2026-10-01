@@ -101,6 +101,7 @@ export function RichTemplateEditor({
         "aria-label": editable
           ? "Rich template content editor"
           : "Published template content",
+        "aria-readonly": editable ? "false" : "true",
       },
     },
   });

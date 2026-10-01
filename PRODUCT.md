@@ -25,7 +25,7 @@ logs while preserving historical records.
 
 Document Template System is a generic academic and demonstration product for an
 OOD and Design Patterns project. It shows how users can create, edit, preview,
-save, finalize, and eventually download documents from governed, versioned
+save, finalize, and download HTML documents from governed, versioned
 templates while keeping each created document independent from later template
 changes.
 
@@ -72,6 +72,8 @@ abstractions must remain understandable and presentation-ready.
   and must not be bypassed.
 - HTML is the initial persisted content format; JSON remains extensible but is
   outside the initial implementation.
+- HTML is the only implemented download format. Draft and Finalized documents
+  may both be downloaded; PDF and DOCX are not currently supported.
 - The product remains a single-repository web application with a Next.js
   frontend and ASP.NET Core REST API backed by PostgreSQL.
 - The implementation should remain simple, explicit, testable, and suitable for
@@ -86,13 +88,29 @@ The interface must behave like a professional productivity tool: clean,
 neutral, readable, consistent, and task-focused. Avoid marketing-style layouts,
 excessive gradients, decorative animation, and portfolio-like presentation.
 
+## Current checkpoint
+
+The implemented application currently covers the author workflow and Admin
+management for categories, templates, template versions, placeholders, users,
+and read-only audit logs. The Admin template-version editor uses TipTap for HTML
+content, while the author Document editor remains a plain content field.
+
+Phase 7 is a QA, cleanup, and documentation checkpoint. It is not a production
+release or feature-complete declaration. The following work is intentionally
+planned outside this checkpoint:
+
+- Phase 6E: registration and logout;
+- Phase 6F: rich-text editing for author-created Documents;
+- Phase 6G: administrator user creation;
+- optional simple permission-based authorization, if separately approved.
+
 ## Evidence on Hand
 
 - `AGENTS.md` is the authoritative source for the approved domain model,
   business rules, architecture, implementation order, and required patterns.
-- The repository contains a Phase 1 frontend and backend scaffold, PostgreSQL
-  configuration, health endpoint, Swagger/OpenAPI, and architecture and
-  integration smoke tests.
+- The repository contains the integrated Next.js frontend and ASP.NET Core API,
+  PostgreSQL persistence and migration, Swagger/OpenAPI, JWT authentication,
+  development seed data, and unit/integration tests.
 - No logo, brand imagery, testimonials, customer evidence, benchmarks, pricing,
   or organization-specific content exists. Future work must not fabricate them.
 
@@ -114,4 +132,3 @@ excessive gradients, decorative animation, and portfolio-like presentation.
 Target WCAG 2.2 AA where practical. Prioritize keyboard access, readable type,
 clear focus and validation states, sufficient contrast, responsive layouts, and
 consistent interaction patterns across author and administrator workflows.
-

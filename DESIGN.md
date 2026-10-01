@@ -421,14 +421,17 @@ The editor is an operational workspace, not a decorative document mockup.
   disappearing toast for persistence confidence.
 - Draft actions prioritize **Save draft**. **Finalize** is visually distinct and
   requires a confirmation that explains the document becomes read-only.
-  **Download** appears only when the export capability and format are defined.
+  **Download** exports the current Draft or Finalized Document as HTML. The UI
+  must not imply that PDF or DOCX is available.
 - Finalized documents replace editing tools with a read-only banner, historical
   metadata, and permitted viewing or export actions.
 
-The exact content-editing control is intentionally unresolved. `AGENTS.md`
-allows HTML persistence and an in-memory Composite model but does not approve a
-WYSIWYG editor, block editor, raw HTML editor, or specific editing library. The
-layout must accommodate an editor region without selecting that mechanism.
+The implemented Admin template-version editor uses TipTap to edit persisted HTML
+for Draft versions and becomes read-only for Published versions. This decision
+does not apply to author-created Documents: their current content field remains
+plain editing, and the planned Phase 6F will define their rich-text behavior.
+Neither editor may bypass Prototype independence, Published-version
+immutability, or Finalized-document read-only rules.
 
 ### Loading, empty, error, and disabled states
 
@@ -474,13 +477,18 @@ layout must accommodate an editor region without selecting that mechanism.
 
 ### Explicitly unresolved decisions
 
-- **Editor technology:** WYSIWYG, block-based, structured Composite editor, and
-  raw HTML editing remain unapproved alternatives.
-- **Export format:** Download is required later, but PDF, DOCX, HTML, and other
-  formats are not selected.
+- **Author Document rich-text editing:** Phase 6F must define how TipTap or
+  another approved control edits a cloned Document without changing the source
+  TemplateVersion. The current Admin TipTap decision must not be assumed to
+  settle this workflow automatically.
+- **Additional export formats:** HTML is the implemented MVP download. PDF,
+  DOCX, and other formats remain unapproved.
 - **Document access scope:** The rule allows documents a user is authorized to
   access, but sharing, teams, and cross-user administration are not defined. Do
   not create sharing UI.
+- **Permission model:** Role-based Admin/User authorization is implemented.
+  Fine-grained permissions remain optional and require a separate approved
+  contract and navigation-state review.
 - **Dark mode:** Scaffold tokens exist, but product support is not confirmed.
 
 ## Do's and Don'ts
@@ -515,4 +523,3 @@ layout must accommodate an editor region without selecting that mechanism.
 - **Don't** let admin density or controls leak into the primary author workflow.
 - **Don't** allow UI affordances to imply that published versions, source
   templates, or finalized documents are editable in place.
-

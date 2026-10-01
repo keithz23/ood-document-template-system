@@ -1195,3 +1195,26 @@ The codebase must remain consistent with project documentation.
 If the ERD, Class Diagram, Business Rules, and code disagree, do not silently choose one.
 
 Identify the conflict and request a decision before making a breaking domain change.
+
+---
+
+## 31. Current Checkpoint and Planned Scope
+
+The repository has implemented the author workflow and administration through
+Phase 6D. Phase 7 is currently a QA, cleanup, and documentation checkpoint; it
+is not a production release or a declaration that the product is
+feature-complete.
+
+The following work is intentionally deferred and must be scoped separately:
+
+```text
+Phase 6E  registration and logout
+Phase 6F  rich-text editing for author-created Documents
+Phase 6G  Admin user creation
+Optional  simple permission-based authorization
+```
+
+Do not infer these capabilities from existing login, Admin user-management, or
+Admin template-editor code. Update `PRODUCT.md`, `DESIGN.md`,
+`docs/API_CONTRACT.md`, architecture documentation, tests, and deployment notes
+when a deferred phase is approved and implemented.
