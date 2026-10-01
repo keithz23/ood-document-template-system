@@ -65,4 +65,14 @@ public sealed class User
     public void Activate() => IsActive = true;
 
     public void Deactivate() => IsActive = false;
+
+    public void ChangeRole(UserRole role)
+    {
+        if (!Enum.IsDefined(role))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role), role, "The user role is invalid.");
+        }
+
+        Role = role;
+    }
 }

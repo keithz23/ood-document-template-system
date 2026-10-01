@@ -8,8 +8,10 @@ import {
   FolderCog,
   Menu,
   PanelLeft,
+  ScrollText,
   Tags,
   UserRound,
+  UsersRound,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,8 @@ const navigation = [
 const adminNavigation = [
   { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/templates", label: "Manage templates", icon: FolderCog },
+  { href: "/admin/users", label: "Users", icon: UsersRound },
+  { href: "/admin/audit-logs", label: "Audit logs", icon: ScrollText },
 ] as const;
 
 function ProductMark() {

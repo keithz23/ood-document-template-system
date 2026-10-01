@@ -81,6 +81,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<DocumentService>();
         services.AddScoped<AdminCatalogService>();
         services.AddScoped<AdminTemplateVersionService>();
+        services.AddScoped<AdminUserService>();
         services.AddSingleton<IDocumentRenderer, HtmlDocumentRenderer>();
         services.AddSingleton<PlaceholderValidator>();
         services

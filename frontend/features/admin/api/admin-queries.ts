@@ -10,15 +10,20 @@ import {
   getAdminTemplateVersion,
   getAdminTemplateVersions,
   getAdminTemplates,
+  getAdminUser,
+  getAdminUsers,
+  getAdminAuditLogs,
   publishTemplateVersion,
   removeAdminPlaceholder,
   setCategoryActive,
   setCurrentTemplateVersion,
   setTemplateActive,
+  setUserActive,
   updateAdminPlaceholder,
   updateCategory,
   updateDraftTemplate,
   updateDraftTemplateVersion,
+  updateUserRole,
 } from "@/services/admin-api";
 import type {
   CreateCategoryRequestDto,
@@ -28,6 +33,7 @@ import type {
   UpdateDraftTemplateRequestDto,
   UpdateDraftTemplateVersionRequestDto,
   UpdatePlaceholderRequestDto,
+  UserRole,
 } from "@/types/api";
 
 export const adminKeys = {
@@ -40,6 +46,9 @@ export const adminKeys = {
     ["admin", "template-versions", versionId] as const,
   placeholders: (versionId: string) =>
     ["admin", "template-versions", versionId, "placeholders"] as const,
+  users: ["admin", "users"] as const,
+  user: (userId: string) => ["admin", "users", userId] as const,
+  auditLogs: ["admin", "audit-logs"] as const,
 };
 
 export function useAdminCategories() {
@@ -226,4 +235,46 @@ export function useRemoveAdminPlaceholder(versionId: string) {
       queryClient.invalidateQueries({ queryKey: adminKeys.version(versionId) });
     },
   });
+}
+
+export function useAdminUsers() {
+  return useQuery({ queryKey: adminKeys.users, queryFn: getAdminUsers });
+}
+
+export function useAdminUser(userId: string) {
+  return useQuery({
+    queryKey: adminKeys.user(userId),
+    queryFn: () => getAdminUser(userId),
+    enabled: Boolean(userId),
+  });
+}
+
+export function useSetUserActive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      setUserActive(id, active),
+    onSuccess: (data) => {
+      queryClient.setQueryData(adminKeys.user(data.id), data);
+      queryClient.invalidateQueries({ queryKey: adminKeys.users });
+      queryClient.invalidateQueries({ queryKey: adminKeys.auditLogs });
+    },
+  });
+}
+
+export function useUpdateUserRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, role }: { id: string; role: UserRole }) =>
+      updateUserRole(id, { role }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(adminKeys.user(data.id), data);
+      queryClient.invalidateQueries({ queryKey: adminKeys.users });
+      queryClient.invalidateQueries({ queryKey: adminKeys.auditLogs });
+    },
+  });
+}
+
+export function useAdminAuditLogs() {
+  return useQuery({ queryKey: adminKeys.auditLogs, queryFn: getAdminAuditLogs });
 }
