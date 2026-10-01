@@ -1,10 +1,12 @@
 import { apiClient } from "@/services/api-client";
 import type {
+  AdminAuditLogDto,
   AdminCategoryDto,
   AdminTemplateDetailDto,
   AdminTemplateSummaryDto,
   AdminTemplateVersionDetailDto,
   AdminTemplateVersionSummaryDto,
+  AdminUserDto,
   CreateCategoryRequestDto,
   CreatePlaceholderRequestDto,
   CreateTemplateRequestDto,
@@ -13,6 +15,7 @@ import type {
   UpdateDraftTemplateRequestDto,
   UpdateDraftTemplateVersionRequestDto,
   UpdatePlaceholderRequestDto,
+  UpdateUserRoleRequestDto,
 } from "@/types/api";
 
 export async function getAdminCategories() {
@@ -164,4 +167,39 @@ export async function removeAdminPlaceholder(
   await apiClient.delete(
     `/admin/template-versions/${versionId}/placeholders/${placeholderId}`,
   );
+}
+
+export async function getAdminUsers() {
+  const response = await apiClient.get<AdminUserDto[]>("/admin/users");
+  return response.data;
+}
+
+export async function getAdminUser(userId: string) {
+  const response = await apiClient.get<AdminUserDto>(`/admin/users/${userId}`);
+  return response.data;
+}
+
+export async function setUserActive(userId: string, active: boolean) {
+  const response = await apiClient.post<AdminUserDto>(
+    `/admin/users/${userId}/${active ? "activate" : "deactivate"}`,
+  );
+  return response.data;
+}
+
+export async function updateUserRole(
+  userId: string,
+  request: UpdateUserRoleRequestDto,
+) {
+  const response = await apiClient.patch<AdminUserDto>(
+    `/admin/users/${userId}/role`,
+    request,
+  );
+  return response.data;
+}
+
+export async function getAdminAuditLogs() {
+  const response = await apiClient.get<AdminAuditLogDto[]>(
+    "/admin/audit-logs",
+  );
+  return response.data;
 }

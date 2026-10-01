@@ -133,7 +133,7 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             await client.GetStringAsync("/swagger/v1/swagger.json"));
         var paths = document.RootElement.GetProperty("paths");
 
-        Assert.Equal(25, paths.EnumerateObject().Count());
+        Assert.Equal(31, paths.EnumerateObject().Count());
         Assert.True(paths.TryGetProperty("/api/auth/login", out var loginPath));
         Assert.True(paths.TryGetProperty("/api/auth/me", out _));
         Assert.True(paths.TryGetProperty("/api/templates", out _));
@@ -178,6 +178,12 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.True(paths.TryGetProperty(
             "/api/admin/template-versions/{versionId}/placeholders/{placeholderId}",
             out var placeholderPath));
+        Assert.True(paths.TryGetProperty("/api/admin/users", out _));
+        Assert.True(paths.TryGetProperty("/api/admin/users/{userId}", out _));
+        Assert.True(paths.TryGetProperty("/api/admin/users/{userId}/role", out _));
+        Assert.True(paths.TryGetProperty("/api/admin/audit-logs", out var auditLogsPath));
+        Assert.True(auditLogsPath.TryGetProperty("get", out _));
+        Assert.False(auditLogsPath.TryGetProperty("post", out _));
         Assert.True(placeholderPath.TryGetProperty("patch", out _));
         Assert.True(placeholderPath.TryGetProperty("delete", out _));
 
@@ -551,7 +557,10 @@ public sealed class TestAuthenticationHandler(
         }
 
         var authenticationValue = authorization.ToString();
-        var userId = authenticationValue switch
+        var userId = Request.Headers.TryGetValue("X-Test-UserId", out var customUserId)
+            && Guid.TryParse(customUserId, out var parsedUserId)
+            ? parsedUserId
+            : authenticationValue switch
         {
             OtherAuthenticationScheme =>
                 Guid.Parse("15dbaf8b-cc8c-447c-b0a8-6dc076fb8e7c"),

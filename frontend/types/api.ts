@@ -245,3 +245,33 @@ export type CreatePlaceholderRequestDto = Readonly<{
 }>;
 
 export type UpdatePlaceholderRequestDto = CreatePlaceholderRequestDto;
+
+export type AdminUserDto = Readonly<{
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+}>;
+
+export type UpdateUserRoleRequestDto = Readonly<{
+  role: UserRole;
+}>;
+
+export type AuditActorDto = Readonly<{
+  id: string;
+  username: string;
+  fullName: string;
+}>;
+
+export type AdminAuditLogDto = Readonly<{
+  id: string;
+  performedBy: AuditActorDto;
+  actionType: string;
+  entityType: string;
+  entityId: string;
+  description: string;
+  createdAt: string;
+}>;

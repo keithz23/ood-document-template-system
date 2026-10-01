@@ -4,9 +4,10 @@ Status: **approved implementation contract**.
 
 This document derives the minimum REST contract for the current author-facing
 frontend and the approved rules in `AGENTS.md` and `PRODUCT.md`. Phase 6A adds
-Category and Template metadata administration. Phase 6B adds TemplateVersion
-and Placeholder administration. Later administration, sharing, collaboration,
-registration, password reset, and token refresh remain outside the contract.
+Category and Template metadata administration. Phase 6B/6C add TemplateVersion
+and Placeholder administration. Phase 6D adds User administration and read-only
+Audit Log access. Sharing, collaboration, registration, password reset, and
+token refresh remain outside the contract.
 
 `AGENTS.md` section 7 is the only approved domain-model source currently present
 in the repository. No separate ERD or Class Diagram file was found. If one is
@@ -1172,7 +1173,7 @@ This contract does not define:
 - registration, logout, refresh tokens, password reset, or profile editing;
 - inactive/draft template browsing for authors;
 - historical template-version browsing outside retained Document history;
-- user administration or audit-log endpoints and UI;
+- user creation, password administration, or Audit Log mutation;
 - sharing, comments, teams, collaboration, approval chains, or cross-user access;
 - autosave guarantees, bulk operations, server sorting, pagination, or search;
 - template mutation or editing Published versions;
@@ -1891,3 +1892,273 @@ deleted or changed.
 **Error cases:** `TEMPLATE_VERSION_NOT_FOUND` (`404`),
 `PLACEHOLDER_NOT_FOUND` (`404`), `TEMPLATE_VERSION_PUBLISHED` (`409`),
 `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+## 15. Phase 6D User and Audit Log DTOs
+
+These DTOs are application-boundary projections and are not domain entities.
+`PasswordHash` is never exposed.
+
+```text
+AdminUserDto
+  id: string
+  username: string
+  fullName: string
+  email: string
+  role: "Admin" | "User"
+  isActive: boolean
+  createdAt: string (ISO 8601 UTC)
+
+UpdateUserRoleRequestDto
+  role: "Admin" | "User"
+
+AuditActorDto
+  id: string
+  username: string
+  fullName: string
+
+AdminAuditLogDto
+  id: string
+  performedBy: AuditActorDto
+  actionType: string
+  entityType: string
+  entityId: string
+  description: string
+  createdAt: string (ISO 8601 UTC)
+```
+
+## 16. User administration
+
+All endpoints in this section require a Bearer token with role `Admin`.
+Users are never hard-deleted. Deactivation preserves all foreign-key and
+historical references. Phase 6D does not add user creation, password changes,
+or advanced permissions.
+
+Self-administration is intentionally limited: the authenticated Admin cannot
+deactivate their own account or change their own role. This phase does not
+introduce an unapproved last-active-Admin invariant.
+
+### 16.1 List users
+
+**Method and path:** `GET /api/admin/users`
+
+**Authorization:** Bearer token with role `Admin`.
+
+**Route/query parameters:** None. MVP search and role/status filtering are
+client-side.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminUserDto[]`, ordered by `username` and including active
+and inactive users.
+
+**Validation and business rules:** `PasswordHash` and authentication secrets
+must not be exposed. An empty result returns `200 OK` with `[]`.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`500 Internal Server Error`.
+
+**Example request**
+
+```http
+GET /api/admin/users HTTP/1.1
+Authorization: Bearer <admin-access-token>
+```
+
+**Example response**
+
+```json
+[
+  {
+    "id": "c3d358ab-35bb-4018-8988-346381f6422c",
+    "username": "admin",
+    "fullName": "Development Admin",
+    "email": "admin@example.test",
+    "role": "Admin",
+    "isActive": true,
+    "createdAt": "2026-01-01T00:00:00Z"
+  }
+]
+```
+
+**Error cases:** `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 16.2 View user details
+
+**Method and path:** `GET /api/admin/users/{userId}`
+
+**Authorization:** Bearer token with role `Admin`.
+
+**Route parameters:** `userId` is the opaque User identifier. No query
+parameters.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminUserDto`.
+
+**Validation and business rules:** Active and inactive users are readable.
+No password or token data is returned.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
+
+**Example request:**
+`GET /api/admin/users/c3d358ab-35bb-4018-8988-346381f6422c`
+
+**Example response:** one `AdminUserDto` as shown in section 16.1.
+
+**Error cases:** `USER_NOT_FOUND` (`404`), `VALIDATION_FAILED` (`400`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 16.3 Activate user
+
+**Method and path:** `POST /api/admin/users/{userId}/activate`
+
+**Authorization:** Bearer token with role `Admin`.
+
+**Route parameters:** `userId`. No query parameters or request body.
+
+**Request DTO:** None.
+
+**Response DTO:** updated `AdminUserDto`.
+
+**Validation and business rules:** Activation is idempotent. A transition from
+inactive to active writes an `ActivateUser` AuditLog. It does not change the
+user's role or historical references.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
+
+**Example request:**
+`POST /api/admin/users/15dbaf8b-cc8c-447c-b0a8-6dc076fb8e7c/activate`
+
+**Example response:** the updated `AdminUserDto` with `isActive: true`.
+
+**Error cases:** `USER_NOT_FOUND` (`404`), `VALIDATION_FAILED` (`400`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 16.4 Deactivate user
+
+**Method and path:** `POST /api/admin/users/{userId}/deactivate`
+
+**Authorization:** Bearer token with role `Admin`.
+
+**Route parameters:** `userId`. No query parameters or request body.
+
+**Request DTO:** None.
+
+**Response DTO:** updated `AdminUserDto`.
+
+**Validation and business rules**
+
+- The authenticated Admin cannot deactivate their own account.
+- Deactivation is idempotent for another already-inactive user.
+- A transition from active to inactive writes a `DeactivateUser` AuditLog.
+- The user remains persisted and all historical references remain intact.
+- An inactive user cannot complete a subsequent login.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `409 Conflict`,
+`500 Internal Server Error`.
+
+**Example request:**
+`POST /api/admin/users/15dbaf8b-cc8c-447c-b0a8-6dc076fb8e7c/deactivate`
+
+**Example response:** the updated `AdminUserDto` with `isActive: false`.
+
+**Error cases:** `USER_NOT_FOUND` (`404`),
+`SELF_DEACTIVATION_NOT_ALLOWED` (`409`), `VALIDATION_FAILED` (`400`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 16.5 Update user role
+
+**Method and path:** `PATCH /api/admin/users/{userId}/role`
+
+**Authorization:** Bearer token with role `Admin`.
+
+**Route parameters:** `userId`. No query parameters.
+
+**Request DTO:** `UpdateUserRoleRequestDto`.
+
+**Response DTO:** updated `AdminUserDto`.
+
+**Validation and business rules**
+
+- `role` must be exactly `Admin` or `User`.
+- The authenticated Admin cannot change their own role.
+- Submitting the target's existing role is idempotent and creates no AuditLog.
+- A role transition writes an `UpdateUserRole` AuditLog describing the old and
+  new roles.
+- Role changes do not alter activity state or historical references.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `409 Conflict`,
+`500 Internal Server Error`.
+
+**Example request**
+
+```json
+{ "role": "Admin" }
+```
+
+**Example response:** the updated `AdminUserDto` with `role: "Admin"`.
+
+**Error cases:** `USER_NOT_FOUND` (`404`), `INVALID_ROLE` (`400`),
+`SELF_ROLE_CHANGE_NOT_ALLOWED` (`409`), `AUTHENTICATION_REQUIRED` (`401`),
+`FORBIDDEN` (`403`).
+
+## 17. Audit Log administration
+
+### 17.1 List audit logs
+
+**Method and path:** `GET /api/admin/audit-logs`
+
+**Authorization:** Bearer token with role `Admin`.
+
+**Route/query parameters:** None. MVP search and action/entity filtering are
+client-side.
+
+**Request DTO:** None.
+
+**Response DTO:** `AdminAuditLogDto[]`, ordered newest `createdAt` first.
+
+**Validation and business rules**
+
+- Each entry includes its persisted performer, action type, entity type,
+  entity identifier, description, and creation time.
+- Performer information is a read projection from the referenced User.
+- Audit Logs are read-only. No POST, PUT, PATCH, or DELETE Audit Log endpoint
+  exists.
+- Deactivating or changing a User must not remove or rewrite prior Audit Logs.
+- An empty result returns `200 OK` with `[]`.
+
+**HTTP status codes:** `200 OK`, `401 Unauthorized`, `403 Forbidden`,
+`500 Internal Server Error`.
+
+**Example request**
+
+```http
+GET /api/admin/audit-logs HTTP/1.1
+Authorization: Bearer <admin-access-token>
+```
+
+**Example response**
+
+```json
+[
+  {
+    "id": "c4ca0aa3-f073-4dfa-afef-0b51d8318f9b",
+    "performedBy": {
+      "id": "c3d358ab-35bb-4018-8988-346381f6422c",
+      "username": "admin",
+      "fullName": "Development Admin"
+    },
+    "actionType": "DeactivateUser",
+    "entityType": "User",
+    "entityId": "15dbaf8b-cc8c-447c-b0a8-6dc076fb8e7c",
+    "description": "Deactivated user 'author'.",
+    "createdAt": "2026-10-01T09:00:00Z"
+  }
+]
+```
+
+**Error cases:** `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).

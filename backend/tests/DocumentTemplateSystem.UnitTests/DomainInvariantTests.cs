@@ -49,6 +49,24 @@ public sealed class DomainInvariantTests
     }
 
     [Fact]
+    public void User_RoleChangePreservesIdentityAndActivityState()
+    {
+        var user = new User(
+            "author",
+            "password-hash",
+            "Document Author",
+            "author@example.test",
+            UserRole.User);
+        var id = user.Id;
+
+        user.ChangeRole(UserRole.Admin);
+
+        Assert.Equal(id, user.Id);
+        Assert.True(user.IsActive);
+        Assert.Equal(UserRole.Admin, user.Role);
+    }
+
+    [Fact]
     public void PublishedVersion_CannotBeEditedInPlace()
     {
         var template = CreateTemplate();
