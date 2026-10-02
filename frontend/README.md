@@ -2,9 +2,9 @@
 
 This directory contains the Next.js App Router client for Document Template
 System. It uses TypeScript, Tailwind CSS, shadcn/ui, TanStack Query, Axios,
-React Hook Form, and Zod. TipTap is used only by the current Admin template
-version editor; rich-text editing for author-created Documents is planned for a
-later scoped phase.
+React Hook Form, and Zod. A shared TipTap component powers Draft Admin
+TemplateVersion editing and Draft author Document editing; Published versions
+and Finalized Documents use its read-only mode.
 
 ## Local commands
 

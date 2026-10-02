@@ -426,12 +426,14 @@ The editor is an operational workspace, not a decorative document mockup.
 - Finalized documents replace editing tools with a read-only banner, historical
   metadata, and permitted viewing or export actions.
 
-The implemented Admin template-version editor uses TipTap to edit persisted HTML
-for Draft versions and becomes read-only for Published versions. This decision
-does not apply to author-created Documents: their current content field remains
-plain editing, and the planned Phase 6F will define their rich-text behavior.
-Neither editor may bypass Prototype independence, Published-version
-immutability, or Finalized-document read-only rules.
+The Admin TemplateVersion editor and author Document editor use one shared
+TipTap component for the approved HTML subset: headings, emphasis, lists,
+alignment, tables, images by HTTP(S) URL, placeholder tokens, and undo/redo.
+Admin Draft versions and author Draft Documents are editable; Published versions
+and Finalized Documents use the same component in read-only mode. The API
+sanitizes persisted and rendered HTML. Neither workflow may bypass Prototype
+independence, Published-version immutability, or Finalized-document read-only
+rules.
 
 ### Loading, empty, error, and disabled states
 
@@ -477,18 +479,14 @@ immutability, or Finalized-document read-only rules.
 
 ### Explicitly unresolved decisions
 
-- **Author Document rich-text editing:** Phase 6F must define how TipTap or
-  another approved control edits a cloned Document without changing the source
-  TemplateVersion. The current Admin TipTap decision must not be assumed to
-  settle this workflow automatically.
 - **Additional export formats:** HTML is the implemented MVP download. PDF,
   DOCX, and other formats remain unapproved.
 - **Document access scope:** The rule allows documents a user is authorized to
   access, but sharing, teams, and cross-user administration are not defined. Do
   not create sharing UI.
-- **Permission model:** Role-based Admin/User authorization is implemented.
-  Fine-grained permissions remain optional and require a separate approved
-  contract and navigation-state review.
+- **Permission model expansion:** the implemented permission names and
+  Admin/User mapping are fixed in code. Custom roles, persisted grants, and
+  runtime permission management remain unapproved.
 - **Dark mode:** Scaffold tokens exist, but product support is not confirmed.
 
 ## Do's and Don'ts

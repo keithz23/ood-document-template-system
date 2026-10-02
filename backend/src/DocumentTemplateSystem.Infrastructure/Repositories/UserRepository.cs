@@ -23,6 +23,22 @@ public sealed class UserRepository(AppDbContext context) : IUserRepository
         return FindSingleMatchAsync(context, usernameOrEmail, cancellationToken);
     }
 
+    public Task<bool> UsernameExistsAsync(
+        string username,
+        CancellationToken cancellationToken = default) =>
+        context.Users.AnyAsync(user => user.Username == username, cancellationToken);
+
+    public Task<bool> EmailExistsAsync(
+        string email,
+        CancellationToken cancellationToken = default) =>
+        context.Users.AnyAsync(user => user.Email == email, cancellationToken);
+
+    public Task AddAsync(User user, CancellationToken cancellationToken = default) =>
+        context.Users.AddAsync(user, cancellationToken).AsTask();
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        context.SaveChangesAsync(cancellationToken);
+
     private static async Task<User?> FindSingleMatchAsync(
         AppDbContext context,
         string usernameOrEmail,
@@ -32,6 +48,7 @@ public sealed class UserRepository(AppDbContext context) : IUserRepository
             .AsNoTracking()
             .Where(user => user.Username == usernameOrEmail
                 || user.Email == usernameOrEmail)
+            .OrderBy(user => user.Id)
             .Take(2)
             .ToListAsync(cancellationToken);
 

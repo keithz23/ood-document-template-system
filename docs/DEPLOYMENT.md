@@ -67,12 +67,16 @@ database readiness. Migrations do not run automatically at API startup.
 
 ## Production risks to resolve or accept
 
-- Registration, logout, token refresh/revocation, and account recovery are not
-  implemented. Phase 6E will change the authentication surface.
+- Registration and client-side logout are implemented. Token refresh,
+  revocation, account recovery, password changes, and server-side sessions are
+  not implemented.
 - JWTs are stored in browser local storage, increasing impact if client-side
-  script injection occurs. Session design should be reassessed with Phase 6E.
-- Persisted HTML needs an explicit end-to-end sanitization and Content Security
-  Policy review, particularly before Phase 6F expands author rich-text input.
+  script injection occurs. Session storage and token lifecycle must be
+  reassessed during production authentication hardening.
+- Persisted and rendered rich HTML passes through a server allowlist sanitizer,
+  and previews use a sandboxed iframe. A production Content Security Policy and
+  security-header review is still required, especially for downloaded HTML and
+  externally hosted images.
 - Login rate limiting, lockout, security headers, and operational secret
   rotation are not implemented.
 - `/health` does not check PostgreSQL; readiness and liveness are not separated.
@@ -82,10 +86,11 @@ database readiness. Migrations do not run automatically at API startup.
   database backup/restore drills, and disaster recovery are not supplied.
 - List endpoints and Audit Logs have no server pagination; growth limits need an
   operational decision.
-- Admin user creation is not implemented; Phase 6G must define secure initial
-  password handling.
-- Optional fine-grained permissions would require a revised authorization and
-  token-claim model rather than a frontend-only change.
+- Admin user creation hashes the required initial password and writes an audit
+  record. There is no password-expiry/first-login-change workflow.
+- Permission claims use a fixed Admin/User matrix. Custom roles, persisted
+  grants, or runtime permission management would require a revised domain,
+  authorization, and token-claim model rather than a frontend-only change.
 
 ## Rollback and data safety
 

@@ -1,7 +1,7 @@
 # Architecture
 
-Status: **implemented architecture through Phase 6D; reviewed at the Phase 7
-checkpoint**.
+Status: **implemented architecture through Phase 6G.1; ready for the separate
+Phase 7B QA/deployment-readiness pass**.
 
 This document is an implementation view of the approved model in `AGENTS.md`.
 The repository does not contain a separate approved ERD or Class Diagram file;
@@ -111,19 +111,23 @@ than a controller conditional.
 
 ## Application workflows
 
-- `AuthenticationService` validates active users and verifies password hashes.
+- `AuthenticationService` registers active `User` accounts, validates active
+  users, verifies password hashes, and returns effective permissions.
 - `TemplateService` exposes only Active templates with one current Published
   version to author workflows.
 - `DocumentService` creates through Prototype, enforces ownership, validates
-  through Strategy, renders HTML, finalizes atomically, and downloads HTML.
+  through Strategy, sanitizes and renders HTML, previews Draft or Finalized
+  state without mutation, finalizes atomically, and downloads HTML.
 - `AdminCatalogService` manages Category and Template metadata with audit logs.
 - `AdminTemplateVersionService` manages Draft versions and placeholders,
   publishing, current selection, and audit logs.
-- `AdminUserService` changes activation and role, blocks invalid self-management,
-  and records audit logs.
+- `AdminUserService` creates accounts with hashed initial passwords, changes
+  activation and role, blocks invalid self-management, and records audit logs.
 
-The REST surface is defined in `docs/API_CONTRACT.md`. All current Admin routes
-require the `Admin` role; author Documents remain owner-scoped even for Admins.
+The REST surface is defined in `docs/API_CONTRACT.md`. API policies require
+code-defined permission claims. `Admin` receives every current permission;
+`User` receives template-view and own-document permissions. Author Documents
+remain owner-scoped even for Admins. Permissions are not persisted or editable.
 
 ## Frontend architecture
 
@@ -134,22 +138,26 @@ React Hook Form and Zod handle interactive form state and client feedback while
 the API remains authoritative.
 
 JWT state is currently stored in browser local storage and reused by the Axios
-client. A `401` clears that state and returns the user to login. This is an MVP
-choice and a production security consideration, not an architecture invariant.
+client. A `401` or explicit logout clears that state and the authenticated query
+cache before returning the user to login. This is an MVP choice and a production
+security consideration, not an architecture invariant.
 
-The Admin Draft TemplateVersion editor uses TipTap and persists HTML. Published
-versions render read-only. The author Document editor currently uses a plain
-content field; planned Phase 6F must preserve Draft/Finalized and
-Prototype-independence rules when adding rich text.
+Admin Draft TemplateVersion and author Draft Document screens share a TipTap
+component and persist the approved HTML subset. Published versions and
+Finalized Documents render through its read-only mode. Preview remains an
+explicit server render in a sandboxed iframe. Infrastructure provides an
+allowlist HTML sanitizer used before rich content is persisted or rendered, and
+the Composite renderer continues to replace escaped placeholder values.
 
-## Areas that require revisiting after planned phases
+## Areas that require revisiting after future scope
 
-- **Phase 6E:** authentication sequence, token/session ownership, login/register
-  DTOs, logout semantics, route guards, security risks, and diagrams.
-- **Phase 6F:** Document editor component boundaries, HTML sanitization policy,
-  rendering/preview pipeline, accessibility behavior, and Composite mapping.
-- **Phase 6G:** user-creation DTOs, password initialization policy, audit actions,
-  seed/demo account assumptions, and Admin UI flow.
-- **Optional permissions:** authorization policies, JWT claims, endpoint matrix,
-  frontend affordances, and tests. The current two-role model must not be
-  silently reinterpreted as fine-grained RBAC.
+- refresh-token or server-side session work must revisit token ownership,
+  revocation, browser storage, logout semantics, and auth diagrams;
+- password change/recovery must add an approved password policy and secure
+  recovery lifecycle rather than reusing Admin creation;
+- custom roles or runtime permissions require a domain and persistence decision,
+  revised JWT/policy contracts, management UI, and boundary tests;
+- additional content/export formats require renderer, sanitizer, preview, and
+  download parity review;
+- production readiness still requires CSP/security headers, rate limiting,
+  database readiness checks, automated browser E2E, and operational design.

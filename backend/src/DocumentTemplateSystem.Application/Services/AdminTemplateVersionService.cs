@@ -10,7 +10,8 @@ namespace DocumentTemplateSystem.Application.Services;
 public sealed class AdminTemplateVersionService(
     IAdminCatalogRepository repository,
     ICurrentUserContext currentUser,
-    PlaceholderValidator placeholderValidator)
+    PlaceholderValidator placeholderValidator,
+    IHtmlContentSanitizer htmlSanitizer)
 {
     public async Task<IReadOnlyList<AdminTemplateVersionSummaryDto>> GetVersionsAsync(
         Guid templateId,
@@ -36,7 +37,7 @@ public sealed class AdminTemplateVersionService(
                 "The template does not have a version to copy.");
 
         var draft = entry.Template.AddVersion(
-            source.Content,
+            htmlSanitizer.Sanitize(source.Content),
             source.ContentFormat,
             currentUser.UserId);
         foreach (var placeholder in source.Placeholders.OrderBy(item => item.Key))
@@ -85,7 +86,9 @@ public sealed class AdminTemplateVersionService(
 
         var (entry, version) = await GetVersionEntryAsync(versionId, cancellationToken);
         EnsureDraft(version);
-        version.UpdateContent(request.Content, version.ContentFormat);
+        version.UpdateContent(
+            htmlSanitizer.Sanitize(request.Content),
+            version.ContentFormat);
         repository.AddAuditLog(new AuditLog(
             currentUser.UserId,
             "UpdateTemplateVersion",

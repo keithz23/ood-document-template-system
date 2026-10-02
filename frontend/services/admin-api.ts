@@ -7,6 +7,7 @@ import type {
   AdminTemplateVersionDetailDto,
   AdminTemplateVersionSummaryDto,
   AdminUserDto,
+  CreateAdminUserRequestDto,
   CreateCategoryRequestDto,
   CreatePlaceholderRequestDto,
   CreateTemplateRequestDto,
@@ -171,6 +172,11 @@ export async function removeAdminPlaceholder(
 
 export async function getAdminUsers() {
   const response = await apiClient.get<AdminUserDto[]>("/admin/users");
+  return response.data;
+}
+
+export async function createAdminUser(request: CreateAdminUserRequestDto) {
+  const response = await apiClient.post<AdminUserDto>("/admin/users", request);
   return response.data;
 }
 

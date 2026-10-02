@@ -66,7 +66,8 @@ public sealed class ApplicationServiceTests
             documentRepository,
             currentUser,
             new PlaceholderValidator(),
-            new HtmlDocumentRenderer());
+            new HtmlDocumentRenderer(),
+            new PassThroughHtmlSanitizer());
         var sourceContent = data.Version.Content;
 
         var result = await service.CreateDraftAsync(new CreateDraftDocumentRequestDto(
@@ -99,7 +100,8 @@ public sealed class ApplicationServiceTests
             new DocumentRepositoryStub(),
             new CurrentUserContextStub(Guid.NewGuid()),
             new PlaceholderValidator(),
-            new HtmlDocumentRenderer());
+            new HtmlDocumentRenderer(),
+            new PassThroughHtmlSanitizer());
 
         var exception = await Assert.ThrowsAsync<UseCaseException>(() =>
             service.CreateDraftAsync(new CreateDraftDocumentRequestDto(
@@ -119,7 +121,8 @@ public sealed class ApplicationServiceTests
             new DocumentRepositoryStub(),
             new CurrentUserContextStub(Guid.NewGuid()),
             new PlaceholderValidator(),
-            new HtmlDocumentRenderer());
+            new HtmlDocumentRenderer(),
+            new PassThroughHtmlSanitizer());
 
         var exception = await Assert.ThrowsAsync<UseCaseException>(() =>
             service.CreateDraftAsync(new CreateDraftDocumentRequestDto(Guid.Empty, " ")));

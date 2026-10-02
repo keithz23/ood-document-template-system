@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Search, UserRound } from "lucide-react";
+import { CheckCircle2, Search, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
   EmptyState,
@@ -13,6 +14,8 @@ import {
 import { PageHeader } from "@/components/shared/page-header";
 import { useAdminUsers } from "@/features/admin/api/admin-queries";
 import { AdminStatusBadge } from "@/features/admin/components/admin-status-badge";
+import { CreateAdminUserDialog } from "@/features/admin/components/create-admin-user-dialog";
+import { useAuth } from "@/features/auth/auth-provider";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/services/api-errors";
 
@@ -28,10 +31,12 @@ function formatDate(value: string) {
 }
 
 export function AdminUsersScreen() {
+  const { hasPermission } = useAuth();
   const usersQuery = useAdminUsers();
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<RoleFilter>("All");
   const [status, setStatus] = useState<StatusFilter>("All");
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
@@ -54,7 +59,20 @@ export function AdminUsersScreen() {
       <PageHeader
         title="Users"
         description="Review account access, activity status, and assigned roles. User records remain available to preserve document and audit history."
+        actions={hasPermission("Users.Manage") ? (
+          <CreateAdminUserDialog
+            onCreated={(user) => setSuccessMessage(`${user.fullName} was created and can sign in.`)}
+          />
+        ) : undefined}
       />
+
+      {successMessage ? (
+        <Alert role="status">
+          <CheckCircle2 aria-hidden="true" />
+          <AlertTitle>User created</AlertTitle>
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {usersQuery.isPending ? <PageLoadingState label="Loading users" /> : null}
       {usersQuery.isError ? (

@@ -12,7 +12,8 @@ public sealed class DocumentService(
     IDocumentRepository documentRepository,
     ICurrentUserContext currentUserContext,
     PlaceholderValidator placeholderValidator,
-    IDocumentRenderer documentRenderer)
+    IDocumentRenderer documentRenderer,
+    IHtmlContentSanitizer htmlSanitizer)
 {
     public async Task<DocumentDetailDto> CreateDraftAsync(
         CreateDraftDocumentRequestDto request,
@@ -51,6 +52,10 @@ public sealed class DocumentService(
         var document = source.Version.Clone(
             currentUserContext.UserId,
             request.Title.Trim());
+        document.UpdateDraft(
+            document.Title,
+            htmlSanitizer.Sanitize(document.Content),
+            document.UpdatedAt);
 
         await documentRepository.AddAsync(document, cancellationToken);
 
@@ -101,7 +106,9 @@ public sealed class DocumentService(
         var timestamp = DateTimeOffset.UtcNow;
         entry.Document.UpdateDraft(
             request.Title?.Trim() ?? entry.Document.Title,
-            request.Content ?? entry.Document.Content,
+            request.Content is null
+                ? entry.Document.Content
+                : htmlSanitizer.Sanitize(request.Content),
             timestamp);
 
         if (resolvedValues is not null)
@@ -119,18 +126,34 @@ public sealed class DocumentService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ValidatePreviewRequest(request);
-
         var entry = await GetOwnedDocumentAsync(documentId, cancellationToken);
-        EnsureDraft(entry.Document);
         EnsureHtml(entry.Version.ContentFormat);
+
+        if (entry.Document.Status == DocumentStatus.Finalized)
+        {
+            var storedValues = entry.Document.PlaceholderValues
+                .GroupBy(value => value.PlaceholderKeySnapshot, StringComparer.Ordinal)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Last().Value,
+                    StringComparer.Ordinal);
+
+            return new PreviewDocumentResponseDto(
+                entry.Document.Id,
+                documentRenderer.Render(
+                    htmlSanitizer.Sanitize(entry.Document.Content),
+                    storedValues),
+                ContentFormat.Html);
+        }
+
+        ValidatePreviewRequest(request);
 
         var resolvedValues = ValidatePlaceholderValues(
             entry.Placeholders,
             request.PlaceholderValues,
             requireRequiredValues: true);
         var rendered = documentRenderer.Render(
-            request.Content,
+            htmlSanitizer.Sanitize(request.Content),
             BuildValueMap(entry.Placeholders, resolvedValues));
 
         return new PreviewDocumentResponseDto(
@@ -156,7 +179,10 @@ public sealed class DocumentService(
             requireRequiredValues: true);
         var timestamp = DateTimeOffset.UtcNow;
 
-        entry.Document.UpdateDraft(request.Title.Trim(), request.Content, timestamp);
+        entry.Document.UpdateDraft(
+            request.Title.Trim(),
+            htmlSanitizer.Sanitize(request.Content),
+            timestamp);
         ReplacePlaceholderValues(entry.Document, resolvedValues, timestamp);
         entry.Document.Finalize(timestamp);
 
@@ -177,7 +203,9 @@ public sealed class DocumentService(
                 group => group.Key,
                 group => group.Last().Value,
                 StringComparer.Ordinal);
-        var content = documentRenderer.Render(entry.Document.Content, values);
+        var content = documentRenderer.Render(
+            htmlSanitizer.Sanitize(entry.Document.Content),
+            values);
 
         return new DocumentDownloadDto(
             $"{CreateSafeFileName(entry.Document.Title, entry.Document.Id)}.html",

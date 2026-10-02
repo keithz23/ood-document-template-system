@@ -783,7 +783,8 @@ Rules:
 - JWT secrets come from environment/configuration.
 - Never commit secrets.
 - Backend authorization is mandatory.
-- Admin endpoints require Admin role.
+- Admin endpoints require the corresponding fixed Admin permission policy;
+  the current Admin role receives all approved permissions.
 - Validate all client input.
 - Frontend validation is UX, not security.
 - Do not build SQL from user input.
@@ -1201,20 +1202,15 @@ Identify the conflict and request a decision before making a breaking domain cha
 ## 31. Current Checkpoint and Planned Scope
 
 The repository has implemented the author workflow and administration through
-Phase 6D. Phase 7 is currently a QA, cleanup, and documentation checkpoint; it
-is not a production release or a declaration that the product is
-feature-complete.
+Phase 6G.1, including registration and local logout, author Document rich-text
+editing, Admin user creation, and the fixed role-to-permission matrix. Phase 7
+remains a QA, cleanup, and documentation checkpoint; it is not a production
+release or a declaration that the product is feature-complete.
 
-The following work is intentionally deferred and must be scoped separately:
-
-```text
-Phase 6E  registration and logout
-Phase 6F  rich-text editing for author-created Documents
-Phase 6G  Admin user creation
-Optional  simple permission-based authorization
-```
-
-Do not infer these capabilities from existing login, Admin user-management, or
-Admin template-editor code. Update `PRODUCT.md`, `DESIGN.md`,
-`docs/API_CONTRACT.md`, architecture documentation, tests, and deployment notes
-when a deferred phase is approved and implemented.
+The implemented permission model is intentionally simple and code-defined.
+Do not infer custom roles, persisted permission records, or runtime permission
+management. Refresh tokens, token revocation, password recovery/changes,
+additional export formats, automated browser E2E coverage, and production
+operations remain separately scoped work. Update the product, design, API,
+architecture, tests, and deployment documentation together when future scope is
+approved.

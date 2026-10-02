@@ -2,6 +2,7 @@ using DocumentTemplateSystem.Application.Interfaces;
 using DocumentTemplateSystem.Infrastructure.Authentication;
 using DocumentTemplateSystem.Infrastructure.Persistence;
 using DocumentTemplateSystem.Infrastructure.Repositories;
+using DocumentTemplateSystem.Infrastructure.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminUserRepository, AdminUserRepository>();
         services.AddSingleton<IPasswordHashService, AspNetPasswordHashService>();
         services.AddSingleton<IAccessTokenGenerator, JwtAccessTokenGenerator>();
+        services.AddScoped<IHtmlContentSanitizer, AllowlistHtmlContentSanitizer>();
         services.AddSingleton(TimeProvider.System);
         services.Configure<JwtOptions>(
             configuration.GetSection(JwtOptions.SectionName));

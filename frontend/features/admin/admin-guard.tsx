@@ -8,9 +8,13 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { cn } from "@/lib/utils";
 
 export function AdminGuard({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
+  const { hasPermission } = useAuth();
+  const canAccessAdministration =
+    hasPermission("Templates.Manage") ||
+    hasPermission("Users.View") ||
+    hasPermission("AuditLogs.View");
 
-  if (session?.user.role !== "Admin") {
+  if (!canAccessAdministration) {
     return (
       <section className="flex min-h-80 flex-col items-center justify-center rounded-xl border bg-card px-6 py-12 text-center">
         <div className="flex size-10 items-center justify-center rounded-lg bg-amber-50 text-amber-800">

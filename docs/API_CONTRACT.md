@@ -2,13 +2,13 @@
 
 Status: **approved implementation contract**.
 
-This document is the implemented REST contract through Phase 6D and the Phase 7
-QA checkpoint. It covers the author workflow plus Category, Template,
-TemplateVersion, Placeholder, User, and read-only Audit Log administration.
-Phase 7 does not declare the API feature-complete or production-ready.
+This document is the approved REST contract through Phase 6G.1 and the Phase 7
+QA checkpoint. It covers the author workflow, registration and local logout,
+Category, Template, TemplateVersion, Placeholder, User, and read-only Audit Log
+administration, Admin user creation, and the fixed permission matrix. Phase 7
+does not declare the API feature-complete or production-ready.
 
-Registration/logout (planned Phase 6E), Admin user creation (planned Phase 6G),
-optional permission-based authorization, password reset, and token refresh
+Password reset, token refresh, custom roles, and runtime permission management
 remain outside this contract. They require contract updates before
 implementation.
 
@@ -22,9 +22,9 @@ added later and conflicts with this document, the decision priority in
 - Base path: `/api`
 - Media type for JSON: `application/json`
 - Authentication: JWT bearer token in `Authorization: Bearer <token>`
-- Protected authoring roles: `User` and `Admin`.
-- Paths under `/api/admin` require the `Admin` role. An authenticated `User`
-  receives `403 Forbidden`; an unauthenticated caller receives `401 Unauthorized`.
+- Protected actions use the code-defined permission policies in section 18.
+  An authenticated caller without the required permission receives
+  `403 Forbidden`; an unauthenticated caller receives `401 Unauthorized`.
 - Admin receives ordinary user capabilities here. This contract does **not**
   grant Admin cross-user document access.
 - Dates and timestamps use ISO 8601. Timestamps are UTC, for example
@@ -85,9 +85,9 @@ not be silently re-encoded into entities or persistence.
 9. **Content representation:** original mock content was plain text containing
    `{{placeholder_key}}` tokens while the approved initial persisted format is
    `Html`. The API uses `contentFormat: "Html"`. The Admin template editor now
-   edits HTML through TipTap. Phase 6F must separately define rich-text editing
-   for author-created Documents without changing the transport format or
-   mutating the source TemplateVersion.
+   shares the approved TipTap surface with the author Document editor. Both use
+   the same HTML transport format; author edits persist only to the cloned
+   Document and never mutate the source TemplateVersion.
 10. **Download format (resolved):** HTML is the only approved MVP export
     format. Downloads use the `.html` extension and
     `text/html; charset=utf-8`. PDF and DOCX are outside this slice.
@@ -96,6 +96,16 @@ not be silently re-encoded into entities or persistence.
     business rule.
 12. **User identity:** `/api/auth/me` supplies the authenticated shell identity;
     the original hard-coded identity has been removed.
+13. **Rich HTML safety:** author and Admin rich-text editors use the approved
+    HTML subset. The API sanitizes persisted and rendered HTML at the trust
+    boundary. Script, event-handler, unsafe URL, and unsupported markup are not
+    preserved.
+14. **Logout:** access tokens are stateless and there is no refresh-token store.
+    Logout is therefore a client operation that clears the access token,
+    identity, and authenticated query cache; no logout endpoint is defined.
+15. **Permissions:** permissions are fixed in code and derived from `Admin` or
+    `User`. They are returned by login, registration, and `/api/auth/me`; they
+    are not persisted as a new domain model or editable through an API.
 
 ## 3. Shared DTOs
 
@@ -158,7 +168,13 @@ new or updated content in this initial slice.
   "username": "maya.chen",
   "fullName": "Maya Chen",
   "email": "maya@example.test",
-  "role": "User"
+  "role": "User",
+  "permissions": [
+    "Templates.View",
+    "Documents.Create",
+    "Documents.ViewOwn",
+    "Documents.EditOwn"
+  ]
 }
 ```
 
@@ -358,6 +374,7 @@ approved model; it is not a new Document entity field.
 | Capability | Method | Path |
 |---|---|---|
 | Sign in | `POST` | `/api/auth/login` |
+| Register | `POST` | `/api/auth/register` |
 | Current identity | `GET` | `/api/auth/me` |
 | Active template gallery | `GET` | `/api/templates` |
 | Template detail | `GET` | `/api/templates/{templateId}` |
@@ -366,7 +383,7 @@ approved model; it is not a new Document entity field.
 | Create draft | `POST` | `/api/documents` |
 | Load document | `GET` | `/api/documents/{documentId}` |
 | Update draft | `PATCH` | `/api/documents/{documentId}` |
-| Preview draft | `POST` | `/api/documents/{documentId}/preview` |
+| Preview document | `POST` | `/api/documents/{documentId}/preview` |
 | Finalize document | `POST` | `/api/documents/{documentId}/finalize` |
 | Download document | `GET` | `/api/documents/{documentId}/download` |
 | Document history | `GET` | `/api/documents` |
@@ -380,6 +397,13 @@ approved model; it is not a new Document entity field.
 | Admin create placeholder | `POST` | `/api/admin/template-versions/{versionId}/placeholders` |
 | Admin update placeholder | `PATCH` | `/api/admin/template-versions/{versionId}/placeholders/{placeholderId}` |
 | Admin remove placeholder | `DELETE` | `/api/admin/template-versions/{versionId}/placeholders/{placeholderId}` |
+| Admin list users | `GET` | `/api/admin/users` |
+| Admin create user | `POST` | `/api/admin/users` |
+| Admin user detail | `GET` | `/api/admin/users/{userId}` |
+| Admin activate user | `POST` | `/api/admin/users/{userId}/activate` |
+| Admin deactivate user | `POST` | `/api/admin/users/{userId}/deactivate` |
+| Admin update user role | `PATCH` | `/api/admin/users/{userId}/role` |
+| Admin audit log | `GET` | `/api/admin/audit-logs` |
 
 ## 5. Authentication endpoints
 
@@ -415,7 +439,8 @@ Both properties are strings.
     "username": "maya.chen",
     "fullName": "Maya Chen",
     "email": "maya@example.test",
-    "role": "User"
+    "role": "User",
+    "permissions": ["Templates.View", "Documents.Create", "Documents.ViewOwn", "Documents.EditOwn"]
   }
 }
 ```
@@ -450,11 +475,61 @@ Content-Type: application/json
 - `VALIDATION_FAILED` (`400`)
 - `INVALID_CREDENTIALS` (`401`)
 
-### 5.2 Get current identity
+### 5.2 Register
+
+**Method and path:** `POST /api/auth/register`
+
+**Authorization:** Anonymous.
+
+**Route/query parameters:** None.
+
+**Request DTO — RegisterRequestDto**
+
+```json
+{
+  "username": "maya.chen",
+  "fullName": "Maya Chen",
+  "email": "maya@example.test",
+  "password": "example-password"
+}
+```
+
+**Response DTO:** `UserDto`. Registration creates an active user with role
+`User` and its fixed permissions. It does not issue a JWT; the client redirects
+to sign-in after success.
+
+**Validation rules**
+
+- `username`, `fullName`, `email`, and `password` are required after trimming
+  where appropriate.
+- `email` must be a syntactically valid email address.
+- `username` and `email` must each be unique.
+- The password is securely hashed before persistence and is never returned,
+  logged, or stored as plaintext.
+- Password confirmation is a client validation field and is not transmitted.
+
+**HTTP status codes:** `201 Created`, `400 Bad Request`, `409 Conflict`,
+`500 Internal Server Error`.
+
+**Example request**
+
+```http
+POST /api/auth/register HTTP/1.1
+Content-Type: application/json
+
+{"username":"maya.chen","fullName":"Maya Chen","email":"maya@example.test","password":"example-password"}
+```
+
+**Example response:** the `UserDto` in section 3.3.
+
+**Error cases:** `VALIDATION_FAILED` (`400`), `USERNAME_ALREADY_EXISTS` (`409`),
+`EMAIL_ALREADY_EXISTS` (`409`).
+
+### 5.3 Get current identity
 
 **Method and path:** `GET /api/auth/me`
 
-**Authorization:** Bearer token; role `User` or `Admin`.
+**Authorization:** Valid Bearer token.
 
 **Route/query parameters:** None.
 
@@ -482,7 +557,8 @@ Authorization: Bearer <access-token>
   "username": "maya.chen",
   "fullName": "Maya Chen",
   "email": "maya@example.test",
-  "role": "User"
+  "role": "User",
+  "permissions": ["Templates.View", "Documents.Create", "Documents.ViewOwn", "Documents.EditOwn"]
 }
 ```
 
@@ -494,7 +570,7 @@ Authorization: Bearer <access-token>
 
 **Method and path:** `GET /api/templates`
 
-**Authorization:** Bearer token; role `User` or `Admin`.
+**Authorization:** `Templates.View`.
 
 **Route/query parameters:** None in this slice. Search and category filtering
 remain client-side.
@@ -554,7 +630,7 @@ templates.
 
 **Method and path:** `GET /api/templates/{templateId}`
 
-**Authorization:** Bearer token; role `User` or `Admin`.
+**Authorization:** `Templates.View`.
 
 **Route parameters:** `templateId` — opaque Template identifier.
 
@@ -593,7 +669,7 @@ Authorization: Bearer <access-token>
 
 **Method and path:** `GET /api/templates/{templateId}/current-version`
 
-**Authorization:** Bearer token; role `User` or `Admin`.
+**Authorization:** `Templates.View`.
 
 **Route parameters:** `templateId` — opaque Template identifier.
 
@@ -630,7 +706,7 @@ Authorization: Bearer <access-token>
 **Method and path:**
 `GET /api/template-versions/{templateVersionId}/placeholders`
 
-**Authorization:** Bearer token; role `User` or `Admin`.
+**Authorization:** `Templates.View`.
 
 **Route parameters:** `templateVersionId` — opaque TemplateVersion identifier.
 
@@ -689,7 +765,7 @@ User ID. No sharing, team access, or Admin override is defined.
 
 **Method and path:** `POST /api/documents`
 
-**Authorization:** Bearer token; role `User` or `Admin`.
+**Authorization:** `Documents.Create`.
 
 **Route/query parameters:** None.
 
@@ -755,7 +831,7 @@ historical document from Document History.
 
 **Method and path:** `GET /api/documents/{documentId}`
 
-**Authorization:** Bearer token; caller must own the document in this slice.
+**Authorization:** `Documents.ViewOwn`; caller must own the document.
 
 **Route parameters:** `documentId` — opaque Document identifier.
 
@@ -788,7 +864,7 @@ Authorization: Bearer <access-token>
 
 **Method and path:** `PATCH /api/documents/{documentId}`
 
-**Authorization:** Bearer token; caller must own the document.
+**Authorization:** `Documents.EditOwn`; caller must own the document.
 
 **Route parameters:** `documentId` — opaque Document identifier.
 
@@ -854,11 +930,11 @@ snapshot values, and `updatedAt`.
 - `INVALID_PLACEHOLDER_VALUE` (`422`)
 - `PLACEHOLDER_NOT_IN_SOURCE_VERSION` (`422`)
 
-### 7.4 Preview draft document
+### 7.4 Preview document
 
 **Method and path:** `POST /api/documents/{documentId}/preview`
 
-**Authorization:** Bearer token; caller must own the document.
+**Authorization:** `Documents.EditOwn`; caller must own the document.
 
 **Route parameters:** `documentId` — opaque Document identifier.
 
@@ -866,8 +942,10 @@ snapshot values, and `updatedAt`.
 
 **Request DTO — PreviewDocumentRequestDto**
 
-The request carries the current unsaved editor state so Preview does not need to
-save or mutate the Draft.
+For a Draft, the request carries the current unsaved editor state so Preview
+does not need to save or mutate it. For a Finalized document, the server renders
+the stored content and stored placeholder snapshots and ignores attempts to
+substitute changed request state.
 
 ```json
 {
@@ -901,8 +979,10 @@ save or mutate the Draft.
 
 **Validation and business rules**
 
-- Document must be an owned Draft.
-- Request values are transient and are not persisted by Preview.
+- Document must be owned by the caller. Both Draft and Finalized documents may
+  be previewed.
+- Draft request values are transient and are not persisted by Preview.
+- Finalized preview always uses stored immutable content and values.
 - Source TemplateVersion is never mutated.
 - Placeholder IDs must belong to the retained source version and be unique.
 - Required values must be present and all values must pass their Strategy
@@ -912,7 +992,7 @@ save or mutate the Draft.
 - Returning to edit leaves the Draft unchanged.
 
 **HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
-`403 Forbidden`, `404 Not Found`, `409 Conflict`,
+`403 Forbidden`, `404 Not Found`,
 `422 Unprocessable Entity`, `500 Internal Server Error`.
 
 **Example request:** The request DTO above is the example JSON body for:
@@ -929,7 +1009,6 @@ Content-Type: application/json
 
 - `DOCUMENT_NOT_FOUND` (`404`)
 - `UNAUTHORIZED_DOCUMENT_ACCESS` (`403`)
-- `DOCUMENT_FINALIZED` (`409`)
 - `MISSING_REQUIRED_PLACEHOLDER` (`422`)
 - `INVALID_PLACEHOLDER_VALUE` (`422`)
 - `PLACEHOLDER_NOT_IN_SOURCE_VERSION` (`422`)
@@ -938,7 +1017,7 @@ Content-Type: application/json
 
 **Method and path:** `POST /api/documents/{documentId}/finalize`
 
-**Authorization:** Bearer token; caller must own the document.
+**Authorization:** `Documents.EditOwn`; caller must own the document.
 
 **Route parameters:** `documentId` — opaque Document identifier.
 
@@ -1042,7 +1121,7 @@ Content-Type: application/json
 
 **Method and path:** `GET /api/documents/{documentId}/download`
 
-**Authorization:** Bearer token; caller must own the document.
+**Authorization:** `Documents.ViewOwn`; caller must own the document.
 
 **Route parameters:** `documentId` — opaque Document identifier.
 
@@ -1100,7 +1179,7 @@ Content-Disposition: attachment; filename*=UTF-8''Acme-consulting-agreement.html
 
 **Method and path:** `GET /api/documents`
 
-**Authorization:** Bearer token; role `User` or `Admin`.
+**Authorization:** `Documents.ViewOwn`.
 
 **Route/query parameters:** None in this slice. The current frontend performs
 search and Draft/Finalized filtering locally.
@@ -1178,18 +1257,15 @@ transport contracts to mirror the retired mock shape:
 
 This contract does not define:
 
-- registration or logout (planned Phase 6E), refresh tokens, password reset, or
-  profile editing;
+- a server logout endpoint, refresh tokens, password reset, or profile editing;
 - inactive/draft template browsing for authors;
 - historical template-version browsing outside retained Document history;
-- Admin user creation (planned Phase 6G), password administration, or Audit Log
-  mutation;
+- password administration or Audit Log mutation;
 - sharing, comments, teams, collaboration, approval chains, or cross-user access;
 - autosave guarantees, bulk operations, server sorting, pagination, or search;
 - template mutation or editing Published versions;
-- rich-text editing for author-created Documents (planned Phase 6F) or a JSON
-  content editor;
-- fine-grained permission-based authorization;
+- a JSON content editor;
+- custom roles, custom permissions, or runtime permission management;
 - PDF or DOCX export.
 
 Those capabilities require separate approval and contract work.
@@ -1251,7 +1327,7 @@ UpdateDraftTemplateRequestDto
 
 ## 11. Category administration
 
-All endpoints in this section require a Bearer token with role `Admin`.
+All endpoints in this section require `Templates.Manage`.
 Category state changes are soft changes; there is no delete endpoint.
 
 ### 11.1 List categories
@@ -1407,7 +1483,7 @@ deactivate related Templates and must not affect historical Documents.
 
 ## 12. Template administration
 
-All endpoints in this section require a Bearer token with role `Admin`.
+All endpoints in this section require `Templates.Manage`.
 Templates are never hard-deleted. Content, TemplateVersion publication, and
 Placeholder administration remain outside Phase 6A.
 
@@ -1653,8 +1729,8 @@ existing default without introducing an optional-value transport wrapper.
 
 ## 14. TemplateVersion and Placeholder administration
 
-Every endpoint in this section requires a Bearer token with role `Admin`. An
-authenticated `User` receives `403 Forbidden`. Every successful mutation writes
+Every endpoint in this section requires `Templates.Manage`. A caller without
+that permission receives `403 Forbidden`. Every successful mutation writes
 an `AuditLog` in the same unit of work as the governed change.
 
 Published TemplateVersions are retained and immutable. There is no
@@ -1923,6 +1999,13 @@ AdminUserDto
 UpdateUserRoleRequestDto
   role: "Admin" | "User"
 
+CreateAdminUserRequestDto
+  username: string
+  fullName: string
+  email: string
+  initialPassword: string
+  role: "Admin" | "User"
+
 AuditActorDto
   id: string
   username: string
@@ -1940,10 +2023,11 @@ AdminAuditLogDto
 
 ## 16. User administration
 
-All endpoints in this section require a Bearer token with role `Admin`.
+All endpoints in this section require a Bearer token and the permission stated
+for the endpoint. Under the fixed matrix, only `Admin` has these permissions.
 Users are never hard-deleted. Deactivation preserves all foreign-key and
-historical references. Phase 6D does not add user creation, password changes,
-or advanced permissions.
+historical references. Password changes and runtime permission management are
+not defined.
 
 Self-administration is intentionally limited: the authenticated Admin cannot
 deactivate their own account or change their own role. This phase does not
@@ -1953,7 +2037,7 @@ introduce an unapproved last-active-Admin invariant.
 
 **Method and path:** `GET /api/admin/users`
 
-**Authorization:** Bearer token with role `Admin`.
+**Authorization:** `Users.View`.
 
 **Route/query parameters:** None. MVP search and role/status filtering are
 client-side.
@@ -1994,11 +2078,64 @@ Authorization: Bearer <admin-access-token>
 
 **Error cases:** `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
 
-### 16.2 View user details
+### 16.2 Create user
+
+**Method and path:** `POST /api/admin/users`
+
+**Authorization:** `Users.Manage`.
+
+**Route/query parameters:** None.
+
+**Request DTO — CreateAdminUserRequestDto**
+
+```json
+{
+  "username": "alex.morgan",
+  "fullName": "Alex Morgan",
+  "email": "alex.morgan@example.test",
+  "initialPassword": "example-password",
+  "role": "User"
+}
+```
+
+**Response DTO:** `AdminUserDto`. The new account is active by default.
+
+**Validation and business rules**
+
+- All request fields are required; `email` must be syntactically valid.
+- `role` must be exactly `Admin` or `User`.
+- `username` and `email` must each be unique.
+- `initialPassword` is securely hashed before persistence and is never exposed,
+  logged, or stored as plaintext.
+- Successful creation writes a `CreateUser` AuditLog associated with the
+  authenticated Admin.
+
+**HTTP status codes:** `201 Created`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `409 Conflict`, `500 Internal Server Error`.
+
+**Example response**
+
+```json
+{
+  "id": "c6a12fa1-b189-445a-86da-19bc4a2f25ec",
+  "username": "alex.morgan",
+  "fullName": "Alex Morgan",
+  "email": "alex.morgan@example.test",
+  "role": "User",
+  "isActive": true,
+  "createdAt": "2026-10-02T09:00:00Z"
+}
+```
+
+**Error cases:** `VALIDATION_FAILED` (`400`), `INVALID_ROLE` (`400`),
+`USERNAME_ALREADY_EXISTS` (`409`), `EMAIL_ALREADY_EXISTS` (`409`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+### 16.3 View user details
 
 **Method and path:** `GET /api/admin/users/{userId}`
 
-**Authorization:** Bearer token with role `Admin`.
+**Authorization:** `Users.View`.
 
 **Route parameters:** `userId` is the opaque User identifier. No query
 parameters.
@@ -2021,11 +2158,11 @@ No password or token data is returned.
 **Error cases:** `USER_NOT_FOUND` (`404`), `VALIDATION_FAILED` (`400`),
 `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
 
-### 16.3 Activate user
+### 16.4 Activate user
 
 **Method and path:** `POST /api/admin/users/{userId}/activate`
 
-**Authorization:** Bearer token with role `Admin`.
+**Authorization:** `Users.Manage`.
 
 **Route parameters:** `userId`. No query parameters or request body.
 
@@ -2048,11 +2185,11 @@ user's role or historical references.
 **Error cases:** `USER_NOT_FOUND` (`404`), `VALIDATION_FAILED` (`400`),
 `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
 
-### 16.4 Deactivate user
+### 16.5 Deactivate user
 
 **Method and path:** `POST /api/admin/users/{userId}/deactivate`
 
-**Authorization:** Bearer token with role `Admin`.
+**Authorization:** `Users.Manage`.
 
 **Route parameters:** `userId`. No query parameters or request body.
 
@@ -2081,11 +2218,11 @@ user's role or historical references.
 `SELF_DEACTIVATION_NOT_ALLOWED` (`409`), `VALIDATION_FAILED` (`400`),
 `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
 
-### 16.5 Update user role
+### 16.6 Update user role
 
 **Method and path:** `PATCH /api/admin/users/{userId}/role`
 
-**Authorization:** Bearer token with role `Admin`.
+**Authorization:** `Users.Manage`.
 
 **Route parameters:** `userId`. No query parameters.
 
@@ -2124,7 +2261,7 @@ user's role or historical references.
 
 **Method and path:** `GET /api/admin/audit-logs`
 
-**Authorization:** Bearer token with role `Admin`.
+**Authorization:** `AuditLogs.View`.
 
 **Route/query parameters:** None. MVP search and action/entity filtering are
 client-side.
@@ -2174,3 +2311,52 @@ Authorization: Bearer <admin-access-token>
 ```
 
 **Error cases:** `AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
+## 18. Fixed permission-based authorization
+
+Permissions are code-defined constants and JWT claims. They are not additional
+domain entities, database tables, or Admin-managed records.
+
+```text
+Templates.View
+Templates.Manage
+Documents.Create
+Documents.ViewOwn
+Documents.EditOwn
+Users.View
+Users.Manage
+AuditLogs.View
+```
+
+The fixed role matrix is:
+
+| Permission | User | Admin |
+|---|:---:|:---:|
+| `Templates.View` | yes | yes |
+| `Templates.Manage` | no | yes |
+| `Documents.Create` | yes | yes |
+| `Documents.ViewOwn` | yes | yes |
+| `Documents.EditOwn` | yes | yes |
+| `Users.View` | no | yes |
+| `Users.Manage` | no | yes |
+| `AuditLogs.View` | no | yes |
+
+Policy mapping:
+
+- gallery, active template detail, current version, and author placeholder reads
+  require `Templates.View`;
+- Admin Category, Template, TemplateVersion, and Placeholder mutation/read
+  endpoints require `Templates.Manage`;
+- document creation requires `Documents.Create`;
+- own document history, detail, and download require `Documents.ViewOwn`;
+- own document update, preview, and finalize require `Documents.EditOwn`;
+- Admin user list/detail require `Users.View`;
+- Admin user creation, activation, deactivation, and role update require
+  `Users.Manage`;
+- read-only Audit Log access requires `AuditLogs.View`.
+
+JWTs include one claim per granted permission. Login, registration, and
+`GET /api/auth/me` expose the same effective permission list through `UserDto`.
+The frontend uses that list only to present permitted navigation/actions; the
+API policies remain authoritative. A valid token without the policy permission
+receives `403 Forbidden`.

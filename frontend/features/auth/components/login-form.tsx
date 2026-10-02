@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { AlertCircle, FileText, LoaderCircle, LogIn } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileText, LoaderCircle, LogIn } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -34,6 +35,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const returnTo = safeReturnTo(searchParams.get("returnTo"));
   const sessionExpired = searchParams.get("reason") === "session-expired";
+  const registered = searchParams.get("registered") === "1";
   const {
     register,
     handleSubmit,
@@ -82,6 +84,14 @@ export function LoginForm() {
               <AlertCircle aria-hidden="true" />
               <AlertTitle>Your session ended</AlertTitle>
               <AlertDescription>Sign in again to continue where you left off.</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {registered ? (
+            <Alert className="mt-5" role="status">
+              <CheckCircle2 aria-hidden="true" />
+              <AlertTitle>Account created</AlertTitle>
+              <AlertDescription>Sign in with your new username or email.</AlertDescription>
             </Alert>
           ) : null}
 
@@ -142,6 +152,13 @@ export function LoginForm() {
               {loginMutation.isPending ? "Signing in…" : "Sign in"}
             </Button>
           </form>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Need an account?{" "}
+            <Link href="/register" className="font-medium text-foreground underline underline-offset-4">
+              Create one
+            </Link>
+          </p>
         </section>
       </div>
     </main>

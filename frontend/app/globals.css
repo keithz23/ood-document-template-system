@@ -155,7 +155,7 @@
 }
 
 @layer components {
-  .template-editor .ProseMirror {
+  .rich-html-editor .ProseMirror {
     min-height: 680px;
     background: white;
     padding: 3rem 4rem;
@@ -167,78 +167,78 @@
     box-shadow: 0 2px 10px rgb(15 23 42 / 0.08);
   }
 
-  .template-editor .ProseMirror:focus-visible {
+  .rich-html-editor .ProseMirror:focus-visible {
     box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 70%, transparent),
       0 4px 16px rgb(15 23 42 / 0.1);
   }
 
-  .template-editor-readonly .ProseMirror {
+  .rich-html-editor-readonly .ProseMirror {
     cursor: default;
   }
 
-  .template-editor .ProseMirror h1,
-  .template-editor .ProseMirror h2,
-  .template-editor .ProseMirror h3 {
+  .rich-html-editor .ProseMirror h1,
+  .rich-html-editor .ProseMirror h2,
+  .rich-html-editor .ProseMirror h3 {
     margin: 1.4em 0 0.55em;
     color: #111827;
     font-family: Arial, Helvetica, sans-serif;
     line-height: 1.2;
   }
 
-  .template-editor .ProseMirror h1 {
+  .rich-html-editor .ProseMirror h1 {
     font-size: 2rem;
   }
 
-  .template-editor .ProseMirror h2 {
+  .rich-html-editor .ProseMirror h2 {
     font-size: 1.55rem;
   }
 
-  .template-editor .ProseMirror h3 {
+  .rich-html-editor .ProseMirror h3 {
     font-size: 1.2rem;
   }
 
-  .template-editor .ProseMirror p {
+  .rich-html-editor .ProseMirror p {
     margin: 0.75em 0;
   }
 
-  .template-editor .ProseMirror ul,
-  .template-editor .ProseMirror ol {
+  .rich-html-editor .ProseMirror ul,
+  .rich-html-editor .ProseMirror ol {
     margin: 0.9em 0;
     padding-left: 1.75rem;
   }
 
-  .template-editor .ProseMirror ul {
+  .rich-html-editor .ProseMirror ul {
     list-style: disc;
   }
 
-  .template-editor .ProseMirror ol {
+  .rich-html-editor .ProseMirror ol {
     list-style: decimal;
   }
 
-  .template-editor .ProseMirror li {
+  .rich-html-editor .ProseMirror li {
     margin: 0.3em 0;
   }
 
-  .template-editor .ProseMirror blockquote {
+  .rich-html-editor .ProseMirror blockquote {
     margin: 1rem 0;
     border-left: 1px solid #94a3b8;
     padding-left: 1rem;
     color: #475569;
   }
 
-  .template-editor .ProseMirror .tableWrapper {
+  .rich-html-editor .ProseMirror .tableWrapper {
     margin: 1rem 0;
     overflow-x: auto;
   }
 
-  .template-editor .ProseMirror table {
+  .rich-html-editor .ProseMirror table {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
   }
 
-  .template-editor .ProseMirror th,
-  .template-editor .ProseMirror td {
+  .rich-html-editor .ProseMirror th,
+  .rich-html-editor .ProseMirror td {
     position: relative;
     min-width: 5rem;
     border: 1px solid #cbd5e1;
@@ -246,13 +246,13 @@
     vertical-align: top;
   }
 
-  .template-editor .ProseMirror th {
+  .rich-html-editor .ProseMirror th {
     background: #f1f5f9;
     font-family: Arial, Helvetica, sans-serif;
     font-weight: 600;
   }
 
-  .template-editor .ProseMirror .selectedCell::after {
+  .rich-html-editor .ProseMirror .selectedCell::after {
     position: absolute;
     inset: 0;
     content: "";
@@ -260,7 +260,7 @@
     background: color-mix(in oklch, var(--primary) 12%, transparent);
   }
 
-  .template-editor .ProseMirror .column-resize-handle {
+  .rich-html-editor .ProseMirror .column-resize-handle {
     position: absolute;
     top: 0;
     right: -2px;
@@ -270,20 +270,20 @@
     pointer-events: none;
   }
 
-  .template-editor .ProseMirror img {
+  .rich-html-editor .ProseMirror img {
     display: block;
     max-width: 100%;
     height: auto;
     margin: 1rem auto;
   }
 
-  .template-editor .ProseMirror img.ProseMirror-selectednode {
+  .rich-html-editor .ProseMirror img.ProseMirror-selectednode {
     outline: 2px solid var(--ring);
     outline-offset: 3px;
   }
 
   @media (max-width: 640px) {
-    .template-editor .ProseMirror {
+    .rich-html-editor .ProseMirror {
       min-height: 560px;
       padding: 2rem 1.5rem;
     }

@@ -6,6 +6,7 @@ import {
   FileClock,
   Files,
   FolderCog,
+  LogOut,
   Menu,
   PanelLeft,
   ScrollText,
@@ -24,17 +25,18 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/auth-provider";
+import type { Permission } from "@/types/api";
 
 const navigation = [
-  { href: "/templates", label: "Templates", icon: Files },
-  { href: "/documents", label: "My documents", icon: FileClock },
+  { href: "/templates", label: "Templates", icon: Files, permission: "Templates.View" },
+  { href: "/documents", label: "My documents", icon: FileClock, permission: "Documents.ViewOwn" },
 ] as const;
 
 const adminNavigation = [
-  { href: "/admin/categories", label: "Categories", icon: Tags },
-  { href: "/admin/templates", label: "Manage templates", icon: FolderCog },
-  { href: "/admin/users", label: "Users", icon: UsersRound },
-  { href: "/admin/audit-logs", label: "Audit logs", icon: ScrollText },
+  { href: "/admin/categories", label: "Categories", icon: Tags, permission: "Templates.Manage" },
+  { href: "/admin/templates", label: "Manage templates", icon: FolderCog, permission: "Templates.Manage" },
+  { href: "/admin/users", label: "Users", icon: UsersRound, permission: "Users.View" },
+  { href: "/admin/audit-logs", label: "Audit logs", icon: ScrollText, permission: "AuditLogs.View" },
 ] as const;
 
 function ProductMark() {
@@ -55,11 +57,11 @@ function ProductMark() {
 
 function Navigation({
   pathname,
-  isAdmin,
+  hasPermission,
   onNavigate,
 }: {
   pathname: string;
-  isAdmin: boolean;
+  hasPermission: (permission: Permission) => boolean;
   onNavigate?: () => void;
 }) {
   const renderLink = (
@@ -90,13 +92,17 @@ function Navigation({
 
   return (
     <nav aria-label="Primary navigation" className="space-y-5">
-      <div className="space-y-1">{navigation.map(renderLink)}</div>
-      {isAdmin ? (
+      <div className="space-y-1">
+        {navigation.filter((item) => hasPermission(item.permission)).map(renderLink)}
+      </div>
+      {adminNavigation.some((item) => hasPermission(item.permission)) ? (
         <div className="border-t pt-4">
           <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Administration
           </p>
-          <div className="space-y-1">{adminNavigation.map(renderLink)}</div>
+          <div className="space-y-1">
+            {adminNavigation.filter((item) => hasPermission(item.permission)).map(renderLink)}
+          </div>
         </div>
       ) : null}
     </nav>
@@ -104,7 +110,7 @@ function Navigation({
 }
 
 function UserIdentity() {
-  const { session } = useAuth();
+  const { session, logout } = useAuth();
   const user = session?.user;
 
   return (
@@ -112,7 +118,7 @@ function UserIdentity() {
       <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <UserRound aria-hidden="true" className="size-4" />
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">
           {user?.fullName ?? "Signed-in user"}
         </p>
@@ -120,13 +126,23 @@ function UserIdentity() {
           {user?.role === "Admin" ? "Admin workspace" : "Author workspace"}
         </p>
       </div>
+      <Button
+        type="button"
+        size="icon-sm"
+        variant="ghost"
+        aria-label="Sign out"
+        title="Sign out"
+        onClick={logout}
+      >
+        <LogOut aria-hidden="true" />
+      </Button>
     </div>
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { session } = useAuth();
+  const { hasPermission } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -145,7 +161,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex flex-1 flex-col justify-between gap-8 px-3 py-4">
           <Navigation
             pathname={pathname}
-            isAdmin={session?.user.role === "Admin"}
+            hasPermission={hasPermission}
           />
           <UserIdentity />
         </div>
@@ -177,7 +193,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex flex-1 flex-col justify-between gap-8 px-3 pb-4">
             <Navigation
               pathname={pathname}
-              isAdmin={session?.user.role === "Admin"}
+              hasPermission={hasPermission}
               onNavigate={() => setMobileOpen(false)}
             />
             <UserIdentity />

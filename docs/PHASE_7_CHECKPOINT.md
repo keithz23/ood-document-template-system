@@ -1,26 +1,29 @@
-# Phase 7 QA Checkpoint
+# Phase 7A Checkpoint and Phase 6E–6G.1 Follow-up
 
-Date: 2026-10-01  
-Status: **checkpoint passed with known limitations**
+Date: 2026-10-02
+Status: **implementation verification passed; final Phase 7B pass pending**
 
-This is a QA, cleanup, documentation, and deployment-readiness checkpoint. It
-does not deploy the application, declare it feature-complete, or approve a
-production release.
+Phase 7A was the earlier QA, cleanup, and documentation checkpoint. This update
+records the subsequently approved Phase 6E–6G.1 implementation and its focused
+regression evidence. It does not deploy the application, declare it
+feature-complete, or approve a production release. A separate Phase 7B pass is
+still required before any deployment decision.
 
 ## Scope verified
 
-- JWT login, current-user loading, `401` handling, and Admin/User boundaries
+- registration, JWT login, current-user loading, local logout, `401` handling,
+  fixed permission claims, and Admin/User boundaries
 - active Template gallery, detail, current version, and Placeholders
 - Document creation, edit, placeholder persistence, preview, finalize, history,
   reopen, and HTML download
-- Admin Category, Template, TemplateVersion, Placeholder, User, and read-only
-  Audit Log screens and APIs
-- Admin rich TemplateVersion editor, including Published read-only behavior
+- Admin Category, Template, TemplateVersion, Placeholder, User creation and
+  management, and read-only Audit Log screens and APIs
+- shared Admin TemplateVersion and author Document rich editor, including
+  Published/Finalized read-only behavior and server HTML sanitization
 - historical safeguards, Draft/Finalized lifecycle, Published immutability, and
   one-current-version enforcement
-- desktop and mobile shell, navigation, editor layout, loading/empty/error/
-  disabled states, and keyboard-accessible semantics visible in the audited
-  flows
+- desktop shell, navigation, editor layout, loading/empty/error/disabled states,
+  and keyboard-accessible semantics visible in the audited flows
 
 ## Verification results
 
@@ -30,9 +33,9 @@ production release.
 | `npm run build` | Passed; all App Router routes compiled |
 | `dotnet build DocumentTemplateSystem.sln` | Passed; 0 warnings, 0 errors |
 | Unit tests | 45 passed, 0 failed, 0 skipped |
-| Integration tests | 37 passed, 0 failed, 0 skipped |
+| Integration tests | 46 passed, 0 failed, 0 skipped |
 | EF migration verification | Database already up to date |
-| Browser console | No warnings or errors in the regression tab |
+| Browser runtime | No new browser-side error was emitted after the final logout fix |
 | `git diff --check` | Passed |
 
 The default parallel .NET build path stalled after compiling Domain and reached
@@ -43,14 +46,14 @@ a source compilation failure.
 
 The Impeccable static detector reported only the two uses of Arial in global
 styles. Arial is the explicitly approved body family in `DESIGN.md`, so these
-were retained. Its URL scanner could not launch its own browser in this local
-environment; equivalent responsive and console checks were completed in the
-in-app browser.
+were retained. The shared editor and new forms were also reviewed against the
+existing responsive and accessibility conventions. A fresh device-width
+browser pass remains an explicit Phase 7B item.
 
 ## Browser regression evidence
 
-The local frontend and API were run against PostgreSQL and checked at desktop
-and mobile breakpoints. The verified author path was:
+The local frontend and API were run against PostgreSQL. The desktop author path
+verified during this implementation was:
 
 ```text
 login
@@ -66,12 +69,22 @@ login
 → HTML download
 ```
 
-The Finalized Document rendered as read-only and its edit/save/finalize controls
-were unavailable. Admin navigation and screens were verified with an Admin;
-direct Admin access as a normal User showed the forbidden state. Published
-TemplateVersion content rendered with `contenteditable=false` and
-`aria-readonly=true`. Desktop tables/two-pane editing and mobile navigation,
-stacked records, and pane switching remained usable.
+The Finalized Document rendered as read-only and its save/finalize controls were
+unavailable, while server preview and HTML download remained available. Admin
+navigation and Category, Template, Published version, User, and Audit Log
+screens were verified with an Admin; direct Admin access as a normal User showed
+the forbidden state. Logout cleared persistent credentials and auth-sensitive
+query state, landed on plain `/login`, and browser back navigation exposed only
+the guarded login flow. Published TemplateVersion and Finalized Document content
+rendered read-only. Registration, permission claims, Admin user creation,
+role/state changes, inactive-user rejection, and audit entries were additionally
+verified against the live local API.
+
+The Phase 7A mobile findings remain useful, and the implementation retains its
+mobile shell, stacked table alternatives, editor pane switcher, wrapping rich
+editor toolbar, and responsive dialogs. The newly changed flows were not rerun
+in a dedicated device-width browser during this follow-up; that check remains
+required in Phase 7B.
 
 ## Static and data-integrity review
 
@@ -91,23 +104,23 @@ stacked records, and pane switching remained usable.
   A direct invariant query returned no Template with zero/multiple current
   versions or a non-Published current version.
 
-Two QA-only Documents, their six stored values, two unreferenced Draft
-TemplateVersions, their six Placeholders, and six QA audit entries were removed
-from the local database. This deletion is not recoverable from that database,
-but the records were verification-only; deterministic seed data was preserved.
+The earlier Phase 7A verification records remain removed. This follow-up also
+removed one browser-QA Document with four stored values, one browser-QA user,
+two API-smoke users, and five associated audit entries. These deletions are not
+recoverable from the local database, but every target was synthetic and was
+resolved by exact identifier before deletion; deterministic seed data was
+preserved.
 
 ## Known limitations
 
-- Authentication currently provides login only. Registration and logout are
-  planned for Phase 6E; refresh, revocation, recovery, and profile editing are
-  not implemented.
-- Author-created Documents use plain content editing. Rich-text behavior is
-  planned for Phase 6F; the existing TipTap editor is Admin TemplateVersion
-  scope only.
-- Admins can manage existing users but cannot create users. That workflow is
-  planned for Phase 6G.
-- Authorization is the current Admin/User role model. Optional fine-grained
-  permissions have not been approved or designed.
+- Registration and local logout are implemented, but refresh, revocation,
+  recovery, password changes, and profile editing are not.
+- Rich editing supports the approved HTML subset; there is no file upload,
+  collaborative editing, or JSON content editor.
+- Admin-created users receive a required initial password, but there is no
+  first-login password-change or password-expiry workflow.
+- Authorization uses a fixed Admin/User permission matrix. Custom roles,
+  persisted grants, and runtime permission management are not implemented.
 - HTML is the only download format; PDF, DOCX, and JSON editing are absent.
 - Search/filter behavior is client-side for current MVP lists. Server
   pagination and filtering are absent.
@@ -119,10 +132,12 @@ but the records were verification-only; deterministic seed data was preserved.
 ## Production risks and prerequisites
 
 The principal risks are browser-local JWT storage, no token revocation, no
-login rate limiting/lockout, no explicit HTML sanitization/CSP policy, a
+login rate limiting/lockout, no production CSP/security-header policy, a
 liveness-only health endpoint, and absent production containers, CI/CD,
-observability, backups, and restore drills. Development credentials, seeding,
-and the local JWT key must never be used outside a local demo.
+observability, backups, and restore drills. Rich HTML is allowlist-sanitized and
+previewed in a sandboxed iframe, but that does not replace deployment-level CSP
+or downloaded-file threat review. Development credentials, seeding, and the
+local JWT key must never be used outside a local demo.
 
 Before a future deployment, provision and back up PostgreSQL, provide external
 secrets, disable seeding, apply migrations explicitly, deploy and smoke-test the
@@ -132,15 +147,24 @@ HTTPS/CORS/auth/author/Admin path. Detailed prerequisites and order are in
 
 ## Documentation and architecture revisit points
 
-After each planned phase, revisit these areas:
+Revisit these areas when future scope is approved:
 
-| Planned scope | Required documentation/architecture review |
+| Future scope | Required documentation/architecture review |
 |---|---|
-| Phase 6E register/logout | `PRODUCT.md`, auth API DTOs/endpoints, session storage, route guards, security risks, README/demo-account flow, auth diagrams and tests |
-| Phase 6F client rich text | `DESIGN.md`, Document DTO semantics, sanitization/CSP, Composite/rendering boundary, preview/download parity, accessibility and responsive editor tests |
-| Phase 6G Admin user creation | API contract, password initialization, audit actions, Admin form/accessibility, seed assumptions and user tests |
-| Optional permissions | approved domain/claim model, authorization policies, endpoint matrix, Admin navigation, forbidden states and boundary tests |
+| Refresh/revocation/server sessions | auth DTOs/endpoints, token storage, logout semantics, threat model, deployment secrets, diagrams, and tests |
+| Password recovery/change | approved password policy, recovery token lifecycle, Admin boundaries, audit behavior, UX, and tests |
+| Custom roles/runtime permissions | domain/persistence model, authorization policies, JWT claims, endpoint matrix, Admin navigation, migration, and tests |
+| Additional content/export formats | DTOs, sanitizer, Composite/rendering/export boundaries, editor/preview parity, and deployment dependencies |
+| Production hardening | CSP/security headers, rate limiting, readiness, real-PostgreSQL tests, automated browser E2E, CI/CD, monitoring, backups, and rollback |
 
 `AGENTS.md`, `docs/API_CONTRACT.md`, `docs/ARCHITECTURE.md`,
 `docs/DEPLOYMENT.md`, and this report must be updated together when those
 decisions become approved implementation scope.
+
+## Phase 7B readiness
+
+The implementation is ready to enter Phase 7B. That pass must rerun the full
+desktop and device-width browser matrix, perform a dedicated console/network
+inspection, repeat clean-database migration verification, and make the final
+deployment-readiness decision. Readiness to begin Phase 7B is not production
+approval.

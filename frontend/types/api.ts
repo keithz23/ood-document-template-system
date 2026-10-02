@@ -1,4 +1,13 @@
 export type UserRole = "Admin" | "User";
+export type Permission =
+  | "Templates.View"
+  | "Templates.Manage"
+  | "Documents.Create"
+  | "Documents.ViewOwn"
+  | "Documents.EditOwn"
+  | "Users.View"
+  | "Users.Manage"
+  | "AuditLogs.View";
 export type TemplateStatus = "Draft" | "Active" | "Inactive";
 export type TemplateVersionStatus = "Draft" | "Published";
 export type DocumentStatus = "Draft" | "Finalized";
@@ -11,10 +20,18 @@ export type UserDto = Readonly<{
   fullName: string;
   email: string;
   role: UserRole;
+  permissions: readonly Permission[];
 }>;
 
 export type LoginRequestDto = Readonly<{
   username: string;
+  password: string;
+}>;
+
+export type RegisterRequestDto = Readonly<{
+  username: string;
+  fullName: string;
+  email: string;
   password: string;
 }>;
 
@@ -257,6 +274,14 @@ export type AdminUserDto = Readonly<{
 }>;
 
 export type UpdateUserRoleRequestDto = Readonly<{
+  role: UserRole;
+}>;
+
+export type CreateAdminUserRequestDto = Readonly<{
+  username: string;
+  fullName: string;
+  email: string;
+  initialPassword: string;
   role: UserRole;
 }>;
 

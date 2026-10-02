@@ -6,16 +6,19 @@ active templates, create independent drafts, validate placeholders, preview,
 finalize, reopen, and download HTML documents. Administrators manage
 categories, templates, versions, placeholders, users, and read-only audit logs.
 
-This repository is at a **Phase 7 QA and documentation checkpoint**. It is not
+This repository is at a **post-Phase 6G.1 implementation checkpoint** and is
+ready for a separately scoped Phase 7B QA/deployment-readiness pass. It is not
 declared feature-complete or production-ready, and it has not been deployed.
-Registration/logout, client document rich-text editing, administrator user
-creation, and optional permission-based authorization are planned separately.
+Registration and local logout, client Document rich-text editing, administrator
+user creation, and a fixed permission-based authorization matrix are
+implemented. Custom permissions and production authentication hardening remain
+outside this checkpoint.
 
 ## Architecture
 
 - `frontend/` — Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui,
-  TanStack Query, Axios, React Hook Form, Zod, and TipTap for the Admin template
-  editor.
+  TanStack Query, Axios, React Hook Form, Zod, and a shared TipTap editor for
+  Admin TemplateVersions and author Documents.
 - `backend/` — ASP.NET Core REST API with Domain, Application,
   Infrastructure, and Api projects plus unit and integration tests.
 - `docker-compose.yml` — local PostgreSQL 16 service only.
@@ -101,7 +104,7 @@ dotnet test backend/DocumentTemplateSystem.sln
 git diff --check
 ```
 
-The current automated backend suite contains 45 unit tests and 37 integration
+The current automated backend suite contains 45 unit tests and 46 integration
 tests. Browser regression coverage is currently manual; see the
 [Phase 7 checkpoint](docs/PHASE_7_CHECKPOINT.md).
 

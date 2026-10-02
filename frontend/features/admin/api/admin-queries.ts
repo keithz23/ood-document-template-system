@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createCategory,
   createAdminPlaceholder,
+  createAdminUser,
   createDraftTemplateVersion,
   createTemplate,
   getAdminCategories,
@@ -27,6 +28,7 @@ import {
 } from "@/services/admin-api";
 import type {
   CreateCategoryRequestDto,
+  CreateAdminUserRequestDto,
   CreatePlaceholderRequestDto,
   CreateTemplateRequestDto,
   UpdateCategoryRequestDto,
@@ -239,6 +241,17 @@ export function useRemoveAdminPlaceholder(versionId: string) {
 
 export function useAdminUsers() {
   return useQuery({ queryKey: adminKeys.users, queryFn: getAdminUsers });
+}
+
+export function useCreateAdminUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: CreateAdminUserRequestDto) => createAdminUser(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.users });
+      queryClient.invalidateQueries({ queryKey: adminKeys.auditLogs });
+    },
+  });
 }
 
 export function useAdminUser(userId: string) {

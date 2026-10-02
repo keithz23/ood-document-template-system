@@ -24,7 +24,21 @@ public sealed class AuthController(AuthenticationService authenticationService)
         return Ok(await authenticationService.LoginAsync(request, cancellationToken));
     }
 
-    [Authorize(Roles = "User,Admin")]
+    [AllowAnonymous]
+    [HttpPost("register")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<UserDto>> Register(
+        RegisterRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var user = await authenticationService.RegisterAsync(request, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, user);
+    }
+
+    [Authorize]
     [HttpGet("me")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status401Unauthorized)]

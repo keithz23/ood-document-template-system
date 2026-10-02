@@ -58,6 +58,10 @@ abstractions must remain understandable and presentation-ready.
 
 - Users authenticate before protected actions; the initial roles are `Admin`
   and `User`.
+- Public registration creates an active `User`; logout clears the browser JWT,
+  identity, and authenticated query cache.
+- A fixed code-defined permission matrix determines API policies and visible
+  navigation. Custom roles and runtime permission management are not supported.
 - Only active templates with a published current version can create documents.
 - Documents retain their source template-version identity but become independent
   copies after creation.
@@ -90,19 +94,19 @@ excessive gradients, decorative animation, and portfolio-like presentation.
 
 ## Current checkpoint
 
-The implemented application currently covers the author workflow and Admin
-management for categories, templates, template versions, placeholders, users,
-and read-only audit logs. The Admin template-version editor uses TipTap for HTML
-content, while the author Document editor remains a plain content field.
+The implemented application covers the author workflow and Admin management for
+categories, templates, template versions, placeholders, users, and read-only
+audit logs. Registration and local logout are available. Admins can create
+users. Admin TemplateVersion and author Document editing share the approved
+TipTap formatting surface, while Published versions and Finalized Documents are
+read-only. API authorization uses the fixed permission matrix returned with the
+authenticated user.
 
-Phase 7 is a QA, cleanup, and documentation checkpoint. It is not a production
-release or feature-complete declaration. The following work is intentionally
-planned outside this checkpoint:
-
-- Phase 6E: registration and logout;
-- Phase 6F: rich-text editing for author-created Documents;
-- Phase 6G: administrator user creation;
-- optional simple permission-based authorization, if separately approved.
+The Phase 6E–6G.1 implementation is complete and ready for a separately scoped
+Phase 7B QA/deployment-readiness pass. This is not a production release or
+feature-complete declaration. Refresh/revocation, password recovery, custom
+permissions, additional export formats, and production operations remain
+outside this checkpoint.
 
 ## Evidence on Hand
 

@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   clearStoredSession,
   getStoredSession,
@@ -19,18 +19,22 @@ import {
   unauthorizedEventName,
 } from "@/features/auth/auth-storage";
 import { getCurrentUser } from "@/services/auth-api";
+import type { Permission } from "@/types/api";
 
 type AuthContextValue = Readonly<{
   session: AuthSession | null;
   isReady: boolean;
   establishSession: (session: AuthSession) => void;
   clearSession: () => void;
+  logout: () => void;
+  hasPermission: (permission: Permission) => boolean;
 }>;
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -58,7 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearSession = useCallback(() => {
     clearStoredSession();
     setSession(null);
-  }, []);
+    queryClient.clear();
+  }, [queryClient]);
+
+  const logout = useCallback(() => {
+    clearStoredSession();
+    queryClient.clear();
+    window.location.replace("/login");
+  }, [queryClient]);
 
   useEffect(() => {
     const handleUnauthorized = (event: Event) => {
@@ -77,9 +88,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       : session,
     [currentUserQuery.data, session],
   );
+  const hasPermission = useCallback(
+    (permission: Permission) =>
+      Boolean(effectiveSession?.user.permissions?.includes(permission)),
+    [effectiveSession],
+  );
   const value = useMemo(
-    () => ({ session: effectiveSession, isReady, establishSession, clearSession }),
-    [clearSession, effectiveSession, establishSession, isReady],
+    () => ({
+      session: effectiveSession,
+      isReady,
+      establishSession,
+      clearSession,
+      logout,
+      hasPermission,
+    }),
+    [clearSession, effectiveSession, establishSession, hasPermission, isReady, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

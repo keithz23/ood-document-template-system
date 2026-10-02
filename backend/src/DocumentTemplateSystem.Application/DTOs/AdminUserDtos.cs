@@ -13,6 +13,13 @@ public sealed record AdminUserDto(
 
 public sealed record UpdateUserRoleRequestDto(UserRole Role);
 
+public sealed record CreateAdminUserRequestDto(
+    string Username,
+    string FullName,
+    string Email,
+    string InitialPassword,
+    UserRole Role);
+
 public sealed record AuditActorDto(
     Guid Id,
     string Username,

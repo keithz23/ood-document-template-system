@@ -1,6 +1,10 @@
+using System.Net.Mail;
+using DocumentTemplateSystem.Application.Authorization;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Exceptions;
 using DocumentTemplateSystem.Application.Interfaces;
+using DocumentTemplateSystem.Domain.Entities;
+using DocumentTemplateSystem.Domain.Enums;
 
 namespace DocumentTemplateSystem.Application.Services;
 
@@ -14,6 +18,7 @@ public sealed class AuthenticationService(
         LoginRequestDto request,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         var usernameOrEmail = request.Username?.Trim() ?? string.Empty;
         var password = request.Password ?? string.Empty;
         var validationErrors = new List<ValidationErrorDto>();
@@ -56,12 +61,70 @@ public sealed class AuthenticationService(
             token.AccessToken,
             "Bearer",
             token.ExpiresAt,
-            new UserDto(
-                user.Id,
-                user.Username,
-                user.FullName,
-                user.Email,
-                user.Role));
+            MapUser(user));
+    }
+
+    public async Task<UserDto> RegisterAsync(
+        RegisterRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var username = request.Username?.Trim() ?? string.Empty;
+        var fullName = request.FullName?.Trim() ?? string.Empty;
+        var email = request.Email?.Trim() ?? string.Empty;
+        var password = request.Password ?? string.Empty;
+        var errors = new List<ValidationErrorDto>();
+
+        AddRequiredError(errors, "username", username);
+        AddRequiredError(errors, "fullName", fullName);
+        AddRequiredError(errors, "email", email);
+        AddRequiredError(errors, "password", password);
+
+        if (email.Length > 0 && !MailAddress.TryCreate(email, out _))
+        {
+            errors.Add(new ValidationErrorDto(
+                "email",
+                "INVALID_EMAIL",
+                "Email must be a valid email address."));
+        }
+
+        if (errors.Count > 0)
+        {
+            throw UseCaseException.Validation([.. errors]);
+        }
+
+        if (await userRepository.UsernameExistsAsync(username, cancellationToken))
+        {
+            throw UseCaseException.Conflict(
+                "USERNAME_ALREADY_EXISTS",
+                "That username is already in use.");
+        }
+
+        if (await userRepository.EmailExistsAsync(email, cancellationToken))
+        {
+            throw UseCaseException.Conflict(
+                "EMAIL_ALREADY_EXISTS",
+                "That email address is already in use.");
+        }
+
+        var hashSubject = new User(
+            username,
+            "pending-password-hash",
+            fullName,
+            email,
+            UserRole.User);
+        var passwordHash = passwordHashService.HashPassword(hashSubject, password);
+        var user = new User(
+            username,
+            passwordHash,
+            fullName,
+            email,
+            UserRole.User);
+
+        await userRepository.AddAsync(user, cancellationToken);
+        await userRepository.SaveChangesAsync(cancellationToken);
+        return MapUser(user);
     }
 
     public async Task<UserDto> GetCurrentUserAsync(
@@ -76,11 +139,29 @@ public sealed class AuthenticationService(
             throw UseCaseException.AuthenticationRequired();
         }
 
-        return new UserDto(
+        return MapUser(user);
+    }
+
+    private static UserDto MapUser(User user) =>
+        new(
             user.Id,
             user.Username,
             user.FullName,
             user.Email,
-            user.Role);
+            user.Role,
+            Permissions.ForRole(user.Role));
+
+    private static void AddRequiredError(
+        ICollection<ValidationErrorDto> errors,
+        string field,
+        string value)
+    {
+        if (value.Length == 0)
+        {
+            errors.Add(new ValidationErrorDto(
+                field,
+                "REQUIRED",
+                $"{field} is required."));
+        }
     }
 }
