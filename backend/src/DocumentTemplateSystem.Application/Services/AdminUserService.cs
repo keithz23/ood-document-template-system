@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Exceptions;
 using DocumentTemplateSystem.Application.Interfaces;
@@ -8,7 +9,8 @@ namespace DocumentTemplateSystem.Application.Services;
 
 public sealed class AdminUserService(
     IAdminUserRepository repository,
-    ICurrentUserContext currentUser)
+    ICurrentUserContext currentUser,
+    IPasswordHashService passwordHashService)
 {
     public async Task<IReadOnlyList<AdminUserDto>> GetUsersAsync(
         CancellationToken cancellationToken = default)
@@ -23,6 +25,82 @@ public sealed class AdminUserService(
     {
         EnsureIdentifier(userId, "userId");
         return MapUser(await GetUserEntityAsync(userId, cancellationToken));
+    }
+
+    public async Task<AdminUserDto> CreateUserAsync(
+        CreateAdminUserRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var username = request.Username?.Trim() ?? string.Empty;
+        var fullName = request.FullName?.Trim() ?? string.Empty;
+        var email = request.Email?.Trim() ?? string.Empty;
+        var password = request.InitialPassword ?? string.Empty;
+        var errors = new List<ValidationErrorDto>();
+
+        AddRequiredError(errors, "username", username);
+        AddRequiredError(errors, "fullName", fullName);
+        AddRequiredError(errors, "email", email);
+        AddRequiredError(errors, "initialPassword", password);
+
+        if (email.Length > 0 && !MailAddress.TryCreate(email, out _))
+        {
+            errors.Add(new ValidationErrorDto(
+                "email",
+                "INVALID_EMAIL",
+                "Email must be a valid email address."));
+        }
+
+        if (!Enum.IsDefined(request.Role))
+        {
+            errors.Add(new ValidationErrorDto(
+                "role",
+                "INVALID_ROLE",
+                "Role must be Admin or User."));
+        }
+
+        if (errors.Count > 0)
+        {
+            throw UseCaseException.Validation([.. errors]);
+        }
+
+        if (await repository.UsernameExistsAsync(username, cancellationToken))
+        {
+            throw UseCaseException.Conflict(
+                "USERNAME_ALREADY_EXISTS",
+                "That username is already in use.");
+        }
+
+        if (await repository.EmailExistsAsync(email, cancellationToken))
+        {
+            throw UseCaseException.Conflict(
+                "EMAIL_ALREADY_EXISTS",
+                "That email address is already in use.");
+        }
+
+        var hashSubject = new User(
+            username,
+            "pending-password-hash",
+            fullName,
+            email,
+            request.Role);
+        var passwordHash = passwordHashService.HashPassword(hashSubject, password);
+        var user = new User(
+            username,
+            passwordHash,
+            fullName,
+            email,
+            request.Role);
+
+        repository.AddUser(user);
+        repository.AddAuditLog(new AuditLog(
+            currentUser.UserId,
+            "CreateUser",
+            nameof(User),
+            user.Id,
+            $"Created {user.Role} user '{user.Username}'."));
+        await repository.SaveChangesAsync(cancellationToken);
+        return MapUser(user);
     }
 
     public Task<AdminUserDto> ActivateUserAsync(
@@ -153,6 +231,20 @@ public sealed class AdminUserService(
         if (id == Guid.Empty)
         {
             throw UseCaseException.Validation(new ValidationErrorDto(
+                field,
+                "REQUIRED",
+                $"{field} is required."));
+        }
+    }
+
+    private static void AddRequiredError(
+        ICollection<ValidationErrorDto> errors,
+        string field,
+        string value)
+    {
+        if (value.Length == 0)
+        {
+            errors.Add(new ValidationErrorDto(
                 field,
                 "REQUIRED",
                 $"{field} is required."));

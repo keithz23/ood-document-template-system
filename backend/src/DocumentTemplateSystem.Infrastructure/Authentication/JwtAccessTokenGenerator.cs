@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using DocumentTemplateSystem.Application.Authorization;
 using DocumentTemplateSystem.Application.Interfaces;
 using DocumentTemplateSystem.Domain.Entities;
 using Microsoft.Extensions.Options;
@@ -19,15 +20,17 @@ public sealed class JwtAccessTokenGenerator(
 
         var issuedAt = timeProvider.GetUtcNow();
         var expiresAt = issuedAt.AddMinutes(settings.ExpiresMinutes);
-        Claim[] claims =
-        [
+        var claims = new List<Claim>
+        {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.UniqueName, user.Username),
             new(JwtRegisteredClaimNames.Name, user.FullName),
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(ClaimTypes.Role, user.Role.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        ];
+        };
+        claims.AddRange(Permissions.ForRole(user.Role)
+            .Select(permission => new Claim(Permissions.ClaimType, permission)));
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.Key)),
             SecurityAlgorithms.HmacSha256);

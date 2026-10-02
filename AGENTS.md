@@ -783,7 +783,8 @@ Rules:
 - JWT secrets come from environment/configuration.
 - Never commit secrets.
 - Backend authorization is mandatory.
-- Admin endpoints require Admin role.
+- Admin endpoints require the corresponding fixed Admin permission policy;
+  the current Admin role receives all approved permissions.
 - Validate all client input.
 - Frontend validation is UX, not security.
 - Do not build SQL from user input.
@@ -1195,3 +1196,21 @@ The codebase must remain consistent with project documentation.
 If the ERD, Class Diagram, Business Rules, and code disagree, do not silently choose one.
 
 Identify the conflict and request a decision before making a breaking domain change.
+
+---
+
+## 31. Current Checkpoint and Planned Scope
+
+The repository has implemented the author workflow and administration through
+Phase 6G.1, including registration and local logout, author Document rich-text
+editing, Admin user creation, and the fixed role-to-permission matrix. Phase 7
+remains a QA, cleanup, and documentation checkpoint; it is not a production
+release or a declaration that the product is feature-complete.
+
+The implemented permission model is intentionally simple and code-defined.
+Do not infer custom roles, persisted permission records, or runtime permission
+management. Refresh tokens, token revocation, password recovery/changes,
+additional export formats, automated browser E2E coverage, and production
+operations remain separately scoped work. Update the product, design, API,
+architecture, tests, and deployment documentation together when future scope is
+approved.

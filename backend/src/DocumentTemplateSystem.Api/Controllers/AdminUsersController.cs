@@ -1,3 +1,4 @@
+using DocumentTemplateSystem.Application.Authorization;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,11 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace DocumentTemplateSystem.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize]
 [Route("api/admin/users")]
 [Produces("application/json")]
 public sealed class AdminUsersController(AdminUserService service) : ControllerBase
 {
+    [Authorize(Policy = Permissions.UsersView)]
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AdminUserDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status401Unauthorized)]
@@ -19,6 +21,22 @@ public sealed class AdminUsersController(AdminUserService service) : ControllerB
         CancellationToken cancellationToken) =>
         Ok(await service.GetUsersAsync(cancellationToken));
 
+    [Authorize(Policy = Permissions.UsersManage)]
+    [HttpPost]
+    [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AdminUserDto>> CreateUser(
+        CreateAdminUserRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var user = await service.CreateUserAsync(request, cancellationToken);
+        return Created($"/api/admin/users/{user.Id}", user);
+    }
+
+    [Authorize(Policy = Permissions.UsersView)]
     [HttpGet("{userId:guid}")]
     [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
@@ -30,6 +48,7 @@ public sealed class AdminUsersController(AdminUserService service) : ControllerB
         CancellationToken cancellationToken) =>
         Ok(await service.GetUserAsync(userId, cancellationToken));
 
+    [Authorize(Policy = Permissions.UsersManage)]
     [HttpPost("{userId:guid}/activate")]
     [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
@@ -41,6 +60,7 @@ public sealed class AdminUsersController(AdminUserService service) : ControllerB
         CancellationToken cancellationToken) =>
         Ok(await service.ActivateUserAsync(userId, cancellationToken));
 
+    [Authorize(Policy = Permissions.UsersManage)]
     [HttpPost("{userId:guid}/deactivate")]
     [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
@@ -53,6 +73,7 @@ public sealed class AdminUsersController(AdminUserService service) : ControllerB
         CancellationToken cancellationToken) =>
         Ok(await service.DeactivateUserAsync(userId, cancellationToken));
 
+    [Authorize(Policy = Permissions.UsersManage)]
     [HttpPatch("{userId:guid}/role")]
     [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]

@@ -53,7 +53,8 @@ public sealed class AdminTemplateVersionServiceTests
         var service = new AdminTemplateVersionService(
             repository,
             new CurrentUserContextStub(adminId),
-            new PlaceholderValidator());
+            new PlaceholderValidator(),
+            new PassThroughHtmlSanitizer());
 
         var draft = await service.CreateDraftVersionAsync(template.Id);
 
@@ -268,7 +269,8 @@ public sealed class AdminTemplateVersionServiceTests
             var service = new AdminTemplateVersionService(
                 repository,
                 new CurrentUserContextStub(adminId),
-                new PlaceholderValidator());
+                new PlaceholderValidator(),
+                new PassThroughHtmlSanitizer());
             return new Fixture(template, current, repository, service);
         }
 

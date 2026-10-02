@@ -4,12 +4,19 @@ namespace DocumentTemplateSystem.Application.DTOs;
 
 public sealed record LoginRequestDto(string Username, string Password);
 
+public sealed record RegisterRequestDto(
+    string Username,
+    string FullName,
+    string Email,
+    string Password);
+
 public sealed record UserDto(
     Guid Id,
     string Username,
     string FullName,
     string Email,
-    UserRole Role);
+    UserRole Role,
+    IReadOnlyList<string> Permissions);
 
 public sealed record LoginResponseDto(
     string AccessToken,

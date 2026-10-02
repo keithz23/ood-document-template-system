@@ -1,3 +1,4 @@
+using DocumentTemplateSystem.Application.Authorization;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DocumentTemplateSystem.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = Permissions.AuditLogsView)]
 [Route("api/admin/audit-logs")]
 [Produces("application/json")]
 public sealed class AdminAuditLogsController(AdminUserService service) : ControllerBase

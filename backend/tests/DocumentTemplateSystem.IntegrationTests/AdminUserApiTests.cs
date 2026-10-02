@@ -22,6 +22,73 @@ public sealed class AdminUserApiTests
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
 
     [Fact]
+    public async Task Admin_CanCreateUserWithHashedPasswordAndAuditLog()
+    {
+        await using var factory = new AdminUserApiFactory();
+        using var client = CreateClient(
+            factory,
+            TestAuthenticationHandler.AdminAuthenticationScheme,
+            factory.Admin.Id);
+        const string password = "CreatedUser123!";
+
+        var response = await client.PostAsJsonAsync(
+            "/api/admin/users",
+            new CreateAdminUserRequestDto(
+                "created.user",
+                "Created User",
+                "created.user@example.test",
+                password,
+                UserRole.User),
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<AdminUserDto>(JsonOptions);
+        Assert.NotNull(created);
+        Assert.True(created.IsActive);
+        Assert.Equal(UserRole.User, created.Role);
+        var stored = factory.Repository.Users.Single(user => user.Id == created.Id);
+        Assert.NotEqual(password, stored.PasswordHash);
+        Assert.Single(factory.Repository.AuditLogs, log =>
+            log.ActionType == "CreateUser" && log.EntityId == created.Id);
+
+        using var publicClient = factory.CreateClient();
+        var loginResponse = await publicClient.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequestDto("created.user", password),
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("author", "unique-admin-create@example.test", "USERNAME_ALREADY_EXISTS")]
+    [InlineData("unique-admin-create", "author@example.test", "EMAIL_ALREADY_EXISTS")]
+    public async Task AdminCreate_WithDuplicateIdentity_ReturnsConflict(
+        string username,
+        string email,
+        string expectedCode)
+    {
+        await using var factory = new AdminUserApiFactory();
+        using var client = CreateClient(
+            factory,
+            TestAuthenticationHandler.AdminAuthenticationScheme,
+            factory.Admin.Id);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/admin/users",
+            new CreateAdminUserRequestDto(
+                username,
+                "Duplicate User",
+                email,
+                "CreatedUser123!",
+                UserRole.User),
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>(JsonOptions);
+        Assert.Equal(expectedCode, error?.Code);
+    }
+
+    [Fact]
     public async Task Admin_CanListViewChangeRoleAndManageUserActivity()
     {
         await using var factory = new AdminUserApiFactory();
@@ -136,6 +203,7 @@ public sealed class AdminUserApiTests
 
     [Theory]
     [InlineData("GET", "/api/admin/users")]
+    [InlineData("POST", "/api/admin/users")]
     [InlineData("GET", "/api/admin/users/{authorId}")]
     [InlineData("POST", "/api/admin/users/{authorId}/activate")]
     [InlineData("POST", "/api/admin/users/{authorId}/deactivate")]
@@ -157,6 +225,17 @@ public sealed class AdminUserApiTests
         {
             request.Content = JsonContent.Create(
                 new UpdateUserRoleRequestDto(UserRole.Admin),
+                options: JsonOptions);
+        }
+        else if (method == "POST" && path == "/api/admin/users")
+        {
+            request.Content = JsonContent.Create(
+                new CreateAdminUserRequestDto(
+                    "forbidden.user",
+                    "Forbidden User",
+                    "forbidden.user@example.test",
+                    "Password123!",
+                    UserRole.User),
                 options: JsonOptions);
         }
 
@@ -290,6 +369,22 @@ public sealed class InMemoryAdminUserRepository(IReadOnlyList<User> seedUsers)
         Task.FromResult(Users.SingleOrDefault(user =>
             user.Username == usernameOrEmail || user.Email == usernameOrEmail));
 
+    public Task<bool> UsernameExistsAsync(
+        string username,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Users.Any(user => user.Username == username));
+
+    public Task<bool> EmailExistsAsync(
+        string email,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Users.Any(user => user.Email == email));
+
+    public Task AddAsync(User user, CancellationToken cancellationToken = default)
+    {
+        AddUser(user);
+        return Task.CompletedTask;
+    }
+
     public Task<IReadOnlyList<AdminAuditLogEntry>> GetAuditLogsAsync(
         CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<AdminAuditLogEntry>>(
@@ -301,6 +396,8 @@ public sealed class InMemoryAdminUserRepository(IReadOnlyList<User> seedUsers)
                 .ToArray());
 
     public void AddAuditLog(AuditLog auditLog) => AuditLogs.Add(auditLog);
+
+    public void AddUser(User user) => Users.Add(user);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         Task.CompletedTask;

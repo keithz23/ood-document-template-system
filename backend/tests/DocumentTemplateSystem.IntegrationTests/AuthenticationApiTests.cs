@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DocumentTemplateSystem.Application.Authorization;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Interfaces;
 using DocumentTemplateSystem.Domain.Entities;
@@ -47,6 +48,7 @@ public sealed class AuthenticationApiTests : IClassFixture<AuthenticationApiFact
         Assert.Equal("author", login.User.Username);
         Assert.Equal("author@example.test", login.User.Email);
         Assert.Equal(UserRole.User, login.User.Role);
+        Assert.Equal(Permissions.ForRole(UserRole.User), login.User.Permissions);
     }
 
     [Fact]
@@ -137,6 +139,93 @@ public sealed class AuthenticationApiTests : IClassFixture<AuthenticationApiFact
         Assert.Equal(login.User.Id, user.Id);
         Assert.Equal("author", user.Username);
         Assert.Equal(UserRole.User, user.Role);
+        Assert.Equal(Permissions.ForRole(UserRole.User), user.Permissions);
+    }
+
+    [Fact]
+    public async Task Register_CreatesActiveUserWithHashedPasswordAndCanLogin()
+    {
+        using var client = _factory.CreateClient();
+        var suffix = Guid.NewGuid().ToString("N");
+        var username = $"new-{suffix}";
+        var email = $"new-{suffix}@example.test";
+        const string password = "Registration123!";
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new RegisterRequestDto(username, "New Author", email, password),
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var user = await response.Content.ReadFromJsonAsync<UserDto>(JsonOptions);
+        Assert.NotNull(user);
+        Assert.Equal(UserRole.User, user.Role);
+        Assert.Equal(Permissions.ForRole(UserRole.User), user.Permissions);
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain(password, responseBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("passwordHash", responseBody, StringComparison.OrdinalIgnoreCase);
+
+        var loginResponse = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequestDto(username, password),
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_WithDuplicateUsername_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new RegisterRequestDto(
+                "author",
+                "Another Author",
+                $"unique-{Guid.NewGuid():N}@example.test",
+                "Registration123!"),
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>(JsonOptions);
+        Assert.Equal("USERNAME_ALREADY_EXISTS", error?.Code);
+    }
+
+    [Fact]
+    public async Task Register_WithDuplicateEmail_ReturnsConflict()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new RegisterRequestDto(
+                $"unique-{Guid.NewGuid():N}",
+                "Another Author",
+                "author@example.test",
+                "Registration123!"),
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>(JsonOptions);
+        Assert.Equal("EMAIL_ALREADY_EXISTS", error?.Code);
+    }
+
+    [Fact]
+    public async Task UserToken_WithoutAdminPermission_ReturnsForbidden()
+    {
+        using var client = _factory.CreateClient();
+        var loginResponse = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequestDto("author", AuthenticationApiFactory.UserPassword),
+            JsonOptions);
+        var login = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDto>(JsonOptions);
+        Assert.NotNull(login);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        var response = await client.GetAsync("/api/admin/users");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     private static async Task AssertInvalidCredentialsAsync(HttpResponseMessage response)
@@ -233,23 +322,44 @@ public sealed class AuthenticationApiFactory : WebApplicationFactory<Program>
         return user;
     }
 
-    private sealed class InMemoryUserRepository(IReadOnlyList<User> users)
+    private sealed class InMemoryUserRepository(IReadOnlyList<User> seedUsers)
         : IUserRepository
     {
+        private readonly List<User> _users = [.. seedUsers];
+
         public Task<User?> GetByIdAsync(
             Guid userId,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(users.SingleOrDefault(user => user.Id == userId));
+            return Task.FromResult(_users.SingleOrDefault(user => user.Id == userId));
         }
 
         public Task<User?> FindByUsernameOrEmailAsync(
             string usernameOrEmail,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(users.SingleOrDefault(user =>
+            return Task.FromResult(_users.SingleOrDefault(user =>
                 user.Username == usernameOrEmail || user.Email == usernameOrEmail));
         }
+
+        public Task<bool> UsernameExistsAsync(
+            string username,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_users.Any(user => user.Username == username));
+
+        public Task<bool> EmailExistsAsync(
+            string email,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_users.Any(user => user.Email == email));
+
+        public Task AddAsync(User user, CancellationToken cancellationToken = default)
+        {
+            _users.Add(user);
+            return Task.CompletedTask;
+        }
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class EmptyTemplateRepository : ITemplateRepository

@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using DocumentTemplateSystem.Application.Authorization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using DocumentTemplateSystem.Application.DTOs;
@@ -133,8 +134,9 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             await client.GetStringAsync("/swagger/v1/swagger.json"));
         var paths = document.RootElement.GetProperty("paths");
 
-        Assert.Equal(31, paths.EnumerateObject().Count());
+        Assert.Equal(32, paths.EnumerateObject().Count());
         Assert.True(paths.TryGetProperty("/api/auth/login", out var loginPath));
+        Assert.True(paths.TryGetProperty("/api/auth/register", out var registerPath));
         Assert.True(paths.TryGetProperty("/api/auth/me", out _));
         Assert.True(paths.TryGetProperty("/api/templates", out _));
         Assert.True(paths.TryGetProperty("/api/templates/{templateId}", out _));
@@ -178,7 +180,8 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.True(paths.TryGetProperty(
             "/api/admin/template-versions/{versionId}/placeholders/{placeholderId}",
             out var placeholderPath));
-        Assert.True(paths.TryGetProperty("/api/admin/users", out _));
+        Assert.True(paths.TryGetProperty("/api/admin/users", out var usersPath));
+        Assert.True(usersPath.TryGetProperty("post", out _));
         Assert.True(paths.TryGetProperty("/api/admin/users/{userId}", out _));
         Assert.True(paths.TryGetProperty("/api/admin/users/{userId}/role", out _));
         Assert.True(paths.TryGetProperty("/api/admin/audit-logs", out var auditLogsPath));
@@ -194,6 +197,7 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.Equal("http", bearer.GetProperty("type").GetString());
         Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
         Assert.Empty(loginPath.GetProperty("post").GetProperty("security").EnumerateArray());
+        Assert.Empty(registerPath.GetProperty("post").GetProperty("security").EnumerateArray());
     }
 
     [Fact]
@@ -250,6 +254,22 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.Equal(DocumentStatus.Finalized, finalized?.Status);
         Assert.NotNull(finalized?.FinalizedAt);
 
+        var finalizedPreviewResponse = await client.PostAsJsonAsync(
+            $"/api/documents/{document.Id}/preview",
+            new PreviewDocumentRequestDto(
+                "<p>Attempted finalized change</p>",
+                [
+                    new PlaceholderValueInputDto(placeholders[0].Id, "2099-01-01"),
+                    new PlaceholderValueInputDto(placeholders[1].Id, "Changed")
+                ]),
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, finalizedPreviewResponse.StatusCode);
+        var finalizedPreview = await finalizedPreviewResponse.Content
+            .ReadFromJsonAsync<PreviewDocumentResponseDto>(JsonOptions);
+        Assert.Contains("2026-10-01", finalizedPreview?.RenderedContent);
+        Assert.Contains("Acme &amp; Partners", finalizedPreview?.RenderedContent);
+        Assert.DoesNotContain("Attempted finalized change", finalizedPreview?.RenderedContent);
+
         var history = await client.GetFromJsonAsync<DocumentSummaryDto[]>(
             "/api/documents",
             JsonOptions);
@@ -298,6 +318,37 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>(JsonOptions);
         Assert.Equal("MISSING_REQUIRED_PLACEHOLDER", error?.Code);
         Assert.Equal(2, error?.Errors?.Count);
+    }
+
+    [Fact]
+    public async Task UpdateAndDownload_SanitizeUnsafeHtml()
+    {
+        _factory.DocumentRepository.Reset();
+        using var client = CreateAuthenticatedClient();
+        var document = await CreateDraftAsync(client, "Sanitized agreement");
+
+        using var patchRequest = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/documents/{document.Id}")
+        {
+            Content = JsonContent.Create(
+                new UpdateDraftDocumentRequestDto(
+                    null,
+                    "<h1>Safe</h1><script>alert('unsafe')</script><p onclick=\"alert(1)\">Body</p>",
+                    null),
+                options: JsonOptions)
+        };
+        var patchResponse = await client.SendAsync(patchRequest);
+
+        Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
+        var updated = await patchResponse.Content.ReadFromJsonAsync<DocumentDetailDto>(JsonOptions);
+        Assert.Contains("<h1>Safe</h1>", updated?.Content);
+        Assert.DoesNotContain("<script", updated?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("onclick", updated?.Content, StringComparison.OrdinalIgnoreCase);
+
+        var download = await client.GetStringAsync($"/api/documents/{document.Id}/download");
+        Assert.DoesNotContain("<script", download, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("onclick", download, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -568,11 +619,14 @@ public sealed class TestAuthenticationHandler(
             _ => UserId
         };
         var role = authenticationValue == AdminAuthenticationScheme ? "Admin" : "User";
-        Claim[] claims =
-        [
+        var claims = new List<Claim>
+        {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(ClaimTypes.Role, role)
-        ];
+        };
+        claims.AddRange(Permissions.ForRole(
+                role == "Admin" ? UserRole.Admin : UserRole.User)
+            .Select(permission => new Claim(Permissions.ClaimType, permission)));
         var identity = new ClaimsIdentity(claims, AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, AuthenticationScheme);

@@ -37,7 +37,7 @@ function formatDate(value: string) {
 }
 
 export function AdminUserDetailScreen({ userId }: { userId: string }) {
-  const { session } = useAuth();
+  const { session, hasPermission } = useAuth();
   const userQuery = useAdminUser(userId);
   const stateMutation = useSetUserActive();
   const roleMutation = useUpdateUserRole();
@@ -61,6 +61,7 @@ export function AdminUserDetailScreen({ userId }: { userId: string }) {
 
   const user = userQuery.data;
   const isSelf = session?.user.id === user.id;
+  const canManageUsers = hasPermission("Users.Manage");
   const effectiveRole = selectedRole ?? user.role;
   const roleChanged = effectiveRole !== user.role;
 
@@ -175,7 +176,7 @@ export function AdminUserDetailScreen({ userId }: { userId: string }) {
                 id="user-role"
                 value={effectiveRole}
                 onChange={(event) => setSelectedRole(event.target.value as UserRole)}
-                disabled={isSelf || roleMutation.isPending}
+                disabled={!canManageUsers || isSelf || roleMutation.isPending}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 <option value="Admin">Admin</option>
@@ -189,7 +190,7 @@ export function AdminUserDetailScreen({ userId }: { userId: string }) {
               <Button
                 type="button"
                 className="w-full"
-                disabled={isSelf || !roleChanged || roleMutation.isPending}
+                disabled={!canManageUsers || isSelf || !roleChanged || roleMutation.isPending}
                 onClick={saveRole}
               >
                 {roleMutation.isPending ? "Saving role…" : "Save role"}
@@ -207,7 +208,7 @@ export function AdminUserDetailScreen({ userId }: { userId: string }) {
                 type="button"
                 variant={user.isActive ? "outline" : "default"}
                 className="mt-3 w-full"
-                disabled={isSelf || stateMutation.isPending}
+                disabled={!canManageUsers || isSelf || stateMutation.isPending}
                 onClick={() => setConfirmStateOpen(true)}
               >
                 {user.isActive ? "Deactivate account" : "Activate account"}

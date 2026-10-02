@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using DocumentTemplateSystem.Api.Authentication;
 using DocumentTemplateSystem.Api.Middleware;
 using DocumentTemplateSystem.Api.OpenApi;
+using DocumentTemplateSystem.Application.Authorization;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Interfaces;
 using DocumentTemplateSystem.Application.Services;
@@ -132,7 +133,15 @@ public static class ServiceCollectionExtensions
                         "The authenticated user is not permitted to perform this action.")
                 };
             });
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            foreach (var permission in Permissions.All)
+            {
+                options.AddPolicy(
+                    permission,
+                    policy => policy.RequireClaim(Permissions.ClaimType, permission));
+            }
+        });
 
         var allowedOrigins = configuration
             .GetSection("Cors:AllowedOrigins")

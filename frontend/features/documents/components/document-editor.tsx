@@ -7,6 +7,7 @@ import { ArrowLeft, Check, Download, Eye, FilePenLine, LockKeyhole, Save } from 
 import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import { RichHtmlEditor } from "@/components/shared/rich-html-editor";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -79,13 +80,6 @@ function createEditorSchema(placeholders: readonly EditorPlaceholder[]) {
   });
 }
 
-function fillTemplate(content: string, values: Record<string, string>) {
-  return Object.entries(values).reduce(
-    (rendered, [key, value]) => rendered.replaceAll(`{{${key}}}`, value || `{{${key}}}`),
-    content,
-  );
-}
-
 function isLongTextField(placeholder: EditorPlaceholder) {
   return placeholder.dataType === "Text" && ["description", "summary", "experience", "outcomes", "risks", "priorities", "items", "decisions", "skills", "education"].some((term) => placeholder.key.includes(term));
 }
@@ -156,24 +150,30 @@ export function DocumentEditor({ template, document }: {
     title: document?.title ?? `Untitled ${template.name}`,
     values: Object.fromEntries(template.placeholders.map((placeholder) => [placeholder.key, persistedValues[placeholder.key] ?? placeholder.defaultValue ?? ""])),
   }), [document, persistedValues, template]);
-  const { register, handleSubmit, control, formState: { errors } } = useForm<EditorFormValues>({ resolver: zodResolver(schema), defaultValues });
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors, isDirty },
+  } = useForm<EditorFormValues>({ resolver: zodResolver(schema), defaultValues });
   const createDraftMutation = useCreateDraftDocument();
   const updateDraftMutation = useUpdateDraftDocument(documentId);
   const previewMutation = usePreviewDocument(documentId);
   const finalizeMutation = useFinalizeDocument(documentId);
   const downloadMutation = useDownloadDocument(documentId, document?.title ?? defaultValues.title);
   const [content, setContent] = useState(document?.content ?? template.content);
+  const [savedContent, setSavedContent] = useState(document?.content ?? template.content);
   const [status, setStatus] = useState<DocumentStatus>(document?.status ?? "Draft");
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(status === "Finalized" ? "preview" : "edit");
-  const [mobilePane, setMobilePane] = useState<MobilePane>(status === "Finalized" ? "preview" : "fields");
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("edit");
+  const [mobilePane, setMobilePane] = useState<MobilePane>(status === "Finalized" ? "document" : "fields");
   const [finalizeOpen, setFinalizeOpen] = useState(false);
   const [notice, setNotice] = useState(status === "Finalized" ? "Finalized documents are read-only." : "Changes are stored only after you save the Draft.");
   const values = useWatch({ control, name: "values" }) ?? {};
   const title = useWatch({ control, name: "title" });
   const readOnly = status === "Finalized";
-  const renderedContent = readOnly
-    ? fillTemplate(content, values)
-    : previewMutation.data?.renderedContent ?? fillTemplate(content, values);
+  const renderedContent = previewMutation.data?.renderedContent ?? "";
+  const hasUnsavedChanges = !readOnly && (isDirty || content !== savedContent);
   const activeMutation = createDraftMutation.isPending || updateDraftMutation.isPending || previewMutation.isPending || finalizeMutation.isPending || downloadMutation.isPending;
   const mutationError = createDraftMutation.error ?? updateDraftMutation.error ?? previewMutation.error ?? finalizeMutation.error ?? downloadMutation.error;
 
@@ -197,7 +197,20 @@ export function DocumentEditor({ template, document }: {
 
     updateDraftMutation.mutate(
       { title: formValues.title, content, placeholderValues },
-      { onSuccess: () => setNotice("Draft saved just now.") },
+      {
+        onSuccess: (savedDocument) => {
+          const nextValues = Object.fromEntries(
+            savedDocument.placeholderValues.map((value) => [
+              value.placeholderKeySnapshot,
+              value.value,
+            ]),
+          );
+          setContent(savedDocument.content);
+          setSavedContent(savedDocument.content);
+          reset({ title: savedDocument.title, values: nextValues });
+          setNotice("Draft saved just now.");
+        },
+      },
     );
   });
 
@@ -209,7 +222,11 @@ export function DocumentEditor({ template, document }: {
         onSuccess: () => {
           setWorkspaceMode("preview");
           setMobilePane("preview");
-          setNotice("Preview generated from your current unsaved values.");
+          setNotice(
+            readOnly
+              ? "Preview generated from the finalized document."
+              : "Preview generated from your current unsaved values.",
+          );
         },
       },
     );
@@ -227,8 +244,19 @@ export function DocumentEditor({ template, document }: {
       {
         onSuccess: (finalizedDocument) => {
           setStatus(finalizedDocument.status);
-          setWorkspaceMode("preview");
-          setMobilePane("preview");
+          setContent(finalizedDocument.content);
+          setSavedContent(finalizedDocument.content);
+          reset({
+            title: finalizedDocument.title,
+            values: Object.fromEntries(
+              finalizedDocument.placeholderValues.map((value) => [
+                value.placeholderKeySnapshot,
+                value.value,
+              ]),
+            ),
+          });
+          setWorkspaceMode("edit");
+          setMobilePane("document");
           setFinalizeOpen(false);
           setNotice("Document finalized. It is now read-only.");
         },
@@ -261,10 +289,10 @@ export function DocumentEditor({ template, document }: {
           <p className="mt-1.5 text-sm text-muted-foreground">Based on {template.name} · Version {template.versionNumber}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {workspaceMode === "preview" && !readOnly ? (
-            <Button type="button" variant="outline" size="lg" onClick={() => { setWorkspaceMode("edit"); setMobilePane("document"); }} disabled={activeMutation}><FilePenLine aria-hidden="true" />Edit</Button>
+          {workspaceMode === "preview" ? (
+            <Button type="button" variant="outline" size="lg" onClick={() => { setWorkspaceMode("edit"); setMobilePane("document"); }} disabled={activeMutation}><FilePenLine aria-hidden="true" />{readOnly ? "Document" : "Edit"}</Button>
           ) : (
-            <Button type="button" variant="outline" size="lg" onClick={preview} disabled={readOnly || !document || activeMutation} title={!document ? "Save the Draft before previewing" : undefined}><Eye aria-hidden="true" />{previewMutation.isPending ? "Generating…" : "Preview"}</Button>
+            <Button type="button" variant="outline" size="lg" onClick={preview} disabled={!document || activeMutation} title={!document ? "Save the Draft before previewing" : undefined}><Eye aria-hidden="true" />{previewMutation.isPending ? "Generating…" : "Preview"}</Button>
           )}
           <Button type="button" variant="outline" size="lg" onClick={saveDraft} disabled={readOnly || activeMutation}><Save aria-hidden="true" />{createDraftMutation.isPending ? "Creating…" : updateDraftMutation.isPending ? "Saving…" : "Save Draft"}</Button>
           <Button type="button" size="lg" onClick={requestFinalize} disabled={readOnly || !document || activeMutation} title={!document ? "Save the Draft before finalizing" : undefined}><Check aria-hidden="true" />Finalize</Button>
@@ -279,7 +307,9 @@ export function DocumentEditor({ template, document }: {
       {mutationError ? (
         <Alert variant="destructive" role="alert"><AlertTitle>The document action could not be completed</AlertTitle><AlertDescription>{getApiErrorMessage(mutationError, "Check the entered values and your connection, then try again.")}</AlertDescription></Alert>
       ) : null}
-      <p aria-live="polite" className="text-xs text-muted-foreground">{notice}</p>
+      <p aria-live="polite" className={cn("text-xs", hasUnsavedChanges ? "font-medium text-amber-800" : "text-muted-foreground")}>
+        {hasUnsavedChanges ? "Unsaved changes. Save the Draft to persist them." : notice}
+      </p>
 
       <div className="grid grid-cols-3 rounded-lg bg-muted p-1 lg:hidden" aria-label="Editor panes">
         {(["fields", "document", "preview"] as const).map((pane) => (
@@ -301,9 +331,21 @@ export function DocumentEditor({ template, document }: {
         </aside>
 
         <section aria-labelledby="document-workspace-heading" className={cn("min-w-0 rounded-xl border bg-slate-100", mobilePane === "fields" && "hidden lg:block")}>
-          <div className="flex items-center justify-between border-b bg-card px-4 py-3"><div><h2 id="document-workspace-heading" className="text-sm font-semibold">{workspaceMode === "preview" || readOnly ? "Document preview" : "Document workspace"}</h2><p className="mt-0.5 text-xs text-muted-foreground">{workspaceMode === "preview" || readOnly ? "Preview reflects the current field values." : "Edit the independent Draft content below."}</p></div><span className="hidden text-xs text-muted-foreground sm:inline">HTML document</span></div>
+          <div className="flex items-center justify-between border-b bg-card px-4 py-3"><div><h2 id="document-workspace-heading" className="text-sm font-semibold">{workspaceMode === "preview" ? "Document preview" : "Document workspace"}</h2><p className="mt-0.5 text-xs text-muted-foreground">{workspaceMode === "preview" ? "Preview reflects validated document values." : readOnly ? "Finalized content is available for read-only reference." : "Edit the independent Draft content below."}</p></div><span className="hidden text-xs text-muted-foreground sm:inline">HTML document</span></div>
           <div className="p-3 sm:p-5">
-            {workspaceMode === "preview" || readOnly ? <DocumentPage content={renderedContent} /> : <div className="mx-auto max-w-[800px]"><Label htmlFor="document-content" className="sr-only">Document content</Label><Textarea id="document-content" value={content} onChange={(event) => setContent(event.target.value)} className="min-h-[720px] resize-y rounded-none border-0 bg-white px-6 py-10 font-serif text-[14px] leading-7 shadow-none ring-1 ring-slate-200 focus-visible:ring-2 sm:px-12 sm:py-14" /></div>}
+            {workspaceMode === "preview" ? (
+              <DocumentPage content={renderedContent} />
+            ) : (
+              <RichHtmlEditor
+                content={content}
+                savedContent={savedContent}
+                editable={!readOnly}
+                placeholders={template.placeholders}
+                ariaLabel={readOnly ? "Finalized document content" : "Rich document content editor"}
+                toolbarLabel="Document formatting"
+                onChange={setContent}
+              />
+            )}
           </div>
         </section>
       </div>

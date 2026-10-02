@@ -1,3 +1,4 @@
+using DocumentTemplateSystem.Application.Authorization;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DocumentTemplateSystem.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "User,Admin")]
+[Authorize(Policy = Permissions.TemplatesView)]
 [Route("api/templates")]
 [Produces("application/json")]
 public sealed class TemplatesController(TemplateService templateService) : ControllerBase

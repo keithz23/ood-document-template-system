@@ -1,3 +1,4 @@
+using DocumentTemplateSystem.Application.Authorization;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,11 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace DocumentTemplateSystem.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = "User,Admin")]
+[Authorize]
 [Route("api/documents")]
 [Produces("application/json")]
 public sealed class DocumentsController(DocumentService documentService) : ControllerBase
 {
+    [Authorize(Policy = Permissions.DocumentsViewOwn)]
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<DocumentSummaryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status401Unauthorized)]
@@ -21,6 +23,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
         return Ok(await documentService.GetHistoryAsync(cancellationToken));
     }
 
+    [Authorize(Policy = Permissions.DocumentsCreate)]
     [HttpPost]
     [ProducesResponseType(typeof(DocumentDetailDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
@@ -37,6 +40,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
         return Created($"/api/documents/{document.Id}", document);
     }
 
+    [Authorize(Policy = Permissions.DocumentsViewOwn)]
     [HttpGet("{documentId:guid}")]
     [ProducesResponseType(typeof(DocumentDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
@@ -51,6 +55,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
         return Ok(await documentService.GetDocumentAsync(documentId, cancellationToken));
     }
 
+    [Authorize(Policy = Permissions.DocumentsEditOwn)]
     [HttpPatch("{documentId:guid}")]
     [ProducesResponseType(typeof(DocumentDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
@@ -71,6 +76,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
             cancellationToken));
     }
 
+    [Authorize(Policy = Permissions.DocumentsEditOwn)]
     [HttpPost("{documentId:guid}/preview")]
     [ProducesResponseType(typeof(PreviewDocumentResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
@@ -91,6 +97,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
             cancellationToken));
     }
 
+    [Authorize(Policy = Permissions.DocumentsEditOwn)]
     [HttpPost("{documentId:guid}/finalize")]
     [ProducesResponseType(typeof(DocumentDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
@@ -111,6 +118,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
             cancellationToken));
     }
 
+    [Authorize(Policy = Permissions.DocumentsViewOwn)]
     [HttpGet("{documentId:guid}/download")]
     [Produces("text/html")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]

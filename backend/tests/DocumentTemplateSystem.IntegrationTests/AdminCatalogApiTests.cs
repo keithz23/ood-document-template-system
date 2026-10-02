@@ -147,11 +147,17 @@ public sealed class AdminCatalogApiTests
             $"/api/admin/template-versions/{draft.Id}")
         {
             Content = JsonContent.Create(
-                new UpdateDraftTemplateVersionRequestDto("<p>Updated {{client_name}}</p>"),
+                new UpdateDraftTemplateVersionRequestDto(
+                    "<p onclick=\"alert(1)\">Updated {{client_name}}</p><script>alert(1)</script>"),
                 options: JsonOptions)
         };
         var updateVersionResponse = await client.SendAsync(updateVersionRequest);
         Assert.Equal(HttpStatusCode.OK, updateVersionResponse.StatusCode);
+        var updatedVersion = await updateVersionResponse.Content
+            .ReadFromJsonAsync<AdminTemplateVersionDetailDto>(JsonOptions);
+        Assert.Contains("Updated {{client_name}}", updatedVersion?.Content);
+        Assert.DoesNotContain("<script", updatedVersion?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("onclick", updatedVersion?.Content, StringComparison.OrdinalIgnoreCase);
 
         var createPlaceholderRequest = new CreatePlaceholderRequestDto(
             "project_total",
