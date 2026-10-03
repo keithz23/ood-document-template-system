@@ -109,11 +109,12 @@ TipTap formatting surface, while Published versions and Finalized Documents are
 read-only. API authorization uses the fixed permission matrix returned with the
 authenticated user.
 
-The Phase 6E–6H implementation is complete and ready for a separately scoped
-Phase 7B QA/deployment-readiness pass. This is not a production release or
-feature-complete declaration. Refresh/revocation, production email delivery,
-an approved stronger password policy, custom permissions, additional export
-formats, and production operations remain outside this checkpoint.
+The Phase 6E–6H implementation and Phase 7B QA/deployment-readiness checkpoint
+are complete. This is not a production release or feature-complete declaration.
+The current scope is suitable for a local academic demonstration. Refresh and
+revocation, production email delivery, an approved stronger password policy,
+custom permissions, additional export formats, automated browser E2E coverage,
+and production operations remain outside this checkpoint.
 
 ## Evidence on Hand
 

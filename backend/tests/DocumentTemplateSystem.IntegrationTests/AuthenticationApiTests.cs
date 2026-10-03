@@ -228,6 +228,32 @@ public sealed class AuthenticationApiTests : IClassFixture<AuthenticationApiFact
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PublicAuthenticationEndpoint_ExceedingLimit_Returns429()
+    {
+        await using var factory = new AuthenticationApiFactory(rateLimitPermitLimit: 2);
+        using var client = factory.CreateClient();
+
+        var first = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequestDto("author", "incorrect-password"),
+            JsonOptions);
+        var second = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequestDto("author", "incorrect-password"),
+            JsonOptions);
+        var rejected = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequestDto("author", "incorrect-password"),
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, second.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
+        var error = await rejected.Content.ReadFromJsonAsync<ErrorResponseDto>(JsonOptions);
+        Assert.Equal("RATE_LIMIT_EXCEEDED", error?.Code);
+    }
+
     private static async Task AssertInvalidCredentialsAsync(HttpResponseMessage response)
     {
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -253,9 +279,16 @@ public sealed class AuthenticationApiFactory : WebApplicationFactory<Program>
         "integration-test-signing-key-with-at-least-32-bytes";
 
     private readonly IReadOnlyList<User> _users;
+    private readonly int? _rateLimitPermitLimit;
 
     public AuthenticationApiFactory()
+        : this(null)
     {
+    }
+
+    internal AuthenticationApiFactory(int? rateLimitPermitLimit)
+    {
+        _rateLimitPermitLimit = rateLimitPermitLimit;
         _users =
         [
             CreateUser(
@@ -288,6 +321,12 @@ public sealed class AuthenticationApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Issuer", "DocumentTemplateSystem.Tests");
         builder.UseSetting("Jwt:Audience", "DocumentTemplateSystem.Tests.Client");
         builder.UseSetting("Jwt:ExpiresMinutes", "30");
+        if (_rateLimitPermitLimit is not null)
+        {
+            builder.UseSetting(
+                "RateLimiting:PublicAuthentication:PermitLimit",
+                _rateLimitPermitLimit.Value.ToString());
+        }
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IUserRepository>();

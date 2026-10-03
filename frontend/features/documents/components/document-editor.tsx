@@ -106,11 +106,11 @@ function PlaceholderField({ placeholder, register, error }: {
     <div className="space-y-2">
       <Label htmlFor={fieldId} className="text-sm font-medium">
         {placeholder.label}
-        {placeholder.isRequired ? <span aria-hidden="true" className="ml-1 text-red-600">*</span> : <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
+        {placeholder.isRequired ? <span aria-hidden="true" className="ml-1 text-destructive">*</span> : <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
       </Label>
       {isLongTextField(placeholder) ? <Textarea {...fieldProps} className="min-h-24 resize-y" /> : <Input {...fieldProps} type={fieldType} className="h-10" />}
       <p id={helpId} className="text-xs text-muted-foreground">{placeholder.dataType} value</p>
-      {error ? <p id={errorId} className="text-xs font-medium text-red-700">{error}</p> : null}
+      {error ? <p id={errorId} className="text-xs font-medium text-destructive">{error}</p> : null}
     </div>
   );
 }
@@ -121,7 +121,7 @@ function DocumentPage({ content }: { content: string }) {
       title="Document preview"
       sandbox=""
       srcDoc={content}
-      className="mx-auto min-h-[720px] w-full max-w-[800px] bg-white ring-1 ring-slate-200"
+      className="mx-auto min-h-[720px] w-full max-w-[800px] bg-card ring-1 ring-border"
     />
   );
 }
@@ -302,12 +302,12 @@ export function DocumentEditor({ template, document }: {
 
       {!document ? <p className="text-xs text-muted-foreground">Save the Draft once to enable server Preview, Finalize, and HTML Download.</p> : null}
       {readOnly ? (
-        <Alert className="border-emerald-200 bg-emerald-50 text-emerald-950"><LockKeyhole aria-hidden="true" /><AlertTitle>Finalized document</AlertTitle><AlertDescription className="text-emerald-800">This document is read-only. Its content and saved placeholder values remain available for historical reference.</AlertDescription></Alert>
+        <Alert className="border-success/25 bg-success-subtle text-success"><LockKeyhole aria-hidden="true" /><AlertTitle>Finalized document</AlertTitle><AlertDescription>This document is read-only. Its content and saved placeholder values remain available for historical reference.</AlertDescription></Alert>
       ) : null}
       {mutationError ? (
         <Alert variant="destructive" role="alert"><AlertTitle>The document action could not be completed</AlertTitle><AlertDescription>{getApiErrorMessage(mutationError, "Check the entered values and your connection, then try again.")}</AlertDescription></Alert>
       ) : null}
-      <p aria-live="polite" className={cn("text-xs", hasUnsavedChanges ? "font-medium text-amber-800" : "text-muted-foreground")}>
+      <p aria-live="polite" className={cn("text-xs", hasUnsavedChanges ? "font-medium text-warning" : "text-muted-foreground")}>
         {hasUnsavedChanges ? "Unsaved changes. Save the Draft to persist them." : notice}
       </p>
 
@@ -324,13 +324,13 @@ export function DocumentEditor({ template, document }: {
             <dl className="divide-y px-5">{template.placeholders.map((placeholder) => <div key={placeholder.key} className="py-4"><dt className="text-xs font-medium text-muted-foreground">{placeholder.label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{values[placeholder.key] || "Not provided"}</dd></div>)}</dl>
           ) : (
             <form className="space-y-5 p-5" onSubmit={(event) => event.preventDefault()} noValidate>
-              <div className="space-y-2"><Label htmlFor="document-title">Document title<span aria-hidden="true" className="ml-1 text-red-600">*</span></Label><Input id="document-title" className="h-10" aria-invalid={Boolean(errors.title)} aria-describedby={errors.title ? "document-title-error" : undefined} {...register("title")} />{errors.title ? <p id="document-title-error" className="text-xs font-medium text-red-700">{errors.title.message}</p> : null}</div>
+              <div className="space-y-2"><Label htmlFor="document-title">Document title<span aria-hidden="true" className="ml-1 text-destructive">*</span></Label><Input id="document-title" className="h-10" aria-invalid={Boolean(errors.title)} aria-describedby={errors.title ? "document-title-error" : undefined} {...register("title")} />{errors.title ? <p id="document-title-error" className="text-xs font-medium text-destructive">{errors.title.message}</p> : null}</div>
               {template.placeholders.map((placeholder) => <PlaceholderField key={placeholder.key} placeholder={placeholder} register={register} error={errors.values?.[placeholder.key]?.message} />)}
             </form>
           )}
         </aside>
 
-        <section aria-labelledby="document-workspace-heading" className={cn("min-w-0 rounded-xl border bg-slate-100", mobilePane === "fields" && "hidden lg:block")}>
+        <section aria-labelledby="document-workspace-heading" className={cn("min-w-0 rounded-xl border bg-muted", mobilePane === "fields" && "hidden lg:block")}>
           <div className="flex items-center justify-between border-b bg-card px-4 py-3"><div><h2 id="document-workspace-heading" className="text-sm font-semibold">{workspaceMode === "preview" ? "Document preview" : "Document workspace"}</h2><p className="mt-0.5 text-xs text-muted-foreground">{workspaceMode === "preview" ? "Preview reflects validated document values." : readOnly ? "Finalized content is available for read-only reference." : "Edit the independent Draft content below."}</p></div><span className="hidden text-xs text-muted-foreground sm:inline">HTML document</span></div>
           <div className="p-3 sm:p-5">
             {workspaceMode === "preview" ? (

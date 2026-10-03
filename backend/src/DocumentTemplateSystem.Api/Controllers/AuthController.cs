@@ -1,7 +1,9 @@
+using DocumentTemplateSystem.Api.Extensions;
 using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DocumentTemplateSystem.Api.Controllers;
 
@@ -14,10 +16,12 @@ public sealed class AuthController(
     : ControllerBase
 {
     [AllowAnonymous]
+    [EnableRateLimiting(ServiceCollectionExtensions.PublicAuthenticationRateLimitPolicy)]
     [HttpPost("login")]
     [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<LoginResponseDto>> Login(
         LoginRequestDto request,
@@ -27,10 +31,12 @@ public sealed class AuthController(
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(ServiceCollectionExtensions.PublicAuthenticationRateLimitPolicy)]
     [HttpPost("register")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<UserDto>> Register(
         RegisterRequestDto request,
@@ -41,9 +47,11 @@ public sealed class AuthController(
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(ServiceCollectionExtensions.PublicAuthenticationRateLimitPolicy)]
     [HttpPost("forgot-password")]
     [ProducesResponseType(typeof(ForgotPasswordResponseDto), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ForgotPasswordResponseDto>> ForgotPassword(
         ForgotPasswordRequestDto request,
@@ -56,10 +64,12 @@ public sealed class AuthController(
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(ServiceCollectionExtensions.PublicAuthenticationRateLimitPolicy)]
     [HttpPost("reset-password")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ResetPassword(
         ResetPasswordRequestDto request,

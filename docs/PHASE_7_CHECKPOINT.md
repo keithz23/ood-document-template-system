@@ -1,13 +1,15 @@
 # Phase 7A Checkpoint and Phase 6E–6H Follow-up
 
 Date: 2026-10-02
-Status: **implementation verification passed; final Phase 7B pass pending**
+Status: **superseded by the completed Phase 7B readiness checkpoint**
 
 Phase 7A was the earlier QA, cleanup, and documentation checkpoint. This update
 records the subsequently approved Phase 6E–6H implementation and its focused
 regression evidence. It does not deploy the application, declare it
-feature-complete, or approve a production release. A separate Phase 7B pass is
-still required before any deployment decision.
+feature-complete, or approve a production release. A separate Phase 7B pass
+was subsequently completed. See `docs/PHASE_7B_READINESS.md` for the current
+evidence and deployment-readiness verdict. Neither checkpoint deploys the
+application or approves a public production release.
 
 ## Scope verified
 
@@ -48,8 +50,8 @@ a source compilation failure.
 The Impeccable static detector reported only the two uses of Arial in global
 styles. Arial is the explicitly approved body family in `DESIGN.md`, so these
 were retained. The shared editor and new forms were also reviewed against the
-existing responsive and accessibility conventions. A fresh device-width
-browser pass remains an explicit Phase 7B item.
+existing responsive and accessibility conventions. The fresh device-width
+browser pass was subsequently completed in Phase 7B.
 
 ## Browser regression evidence
 
@@ -83,8 +85,8 @@ verified against the live local API.
 
 The Phase 7A mobile findings remain useful, and the implementation retains its
 mobile shell, stacked table alternatives, editor pane switcher, wrapping rich
-editor toolbar, and responsive dialogs. Phase 7B must still repeat the full
-device matrix; the focused Phase 6H check below covers only its changed screens.
+editor toolbar, and responsive dialogs. Phase 7B subsequently repeated the full
+device matrix; the focused Phase 6H evidence below remains historical context.
 
 Phase 6H received an additional focused browser pass on 2026-10-02. Desktop
 verification covered author sign-in, `/profile`, a persisted name/email change,
@@ -150,14 +152,14 @@ seed records were preserved.
 
 ## Production risks and prerequisites
 
-The principal risks are browser-local JWT storage, no token revocation, no
-login/recovery rate limiting or lockout, development-only reset-link delivery,
-no approved stronger password policy, no production CSP/security-header policy, a
-liveness-only health endpoint, and absent production containers, CI/CD,
-observability, backups, and restore drills. Rich HTML is allowlist-sanitized and
-previewed in a sandboxed iframe, but that does not replace deployment-level CSP
-or downloaded-file threat review. Development credentials, seeding, and the
-local JWT key must never be used outside a local demo.
+This Phase 7A risk list has been superseded by the detailed Phase 7B assessment.
+Phase 7B added baseline public-auth rate limiting, API security headers, stricter
+image-source sanitization, and separate database readiness. Remaining principal
+risks include browser-local JWT storage, no token revocation or lockout,
+development-only reset-link delivery, no approved stronger password policy,
+process-local rather than distributed limiting, and absent production
+containers, CI/CD, observability, backups, and restore drills. See
+`docs/PHASE_7B_READINESS.md` and `docs/DEPLOYMENT.md` for the current list.
 
 Before a future deployment, provision and back up PostgreSQL, provide external
 secrets, disable seeding, apply migrations explicitly, deploy and smoke-test the
@@ -175,16 +177,16 @@ Revisit these areas when future scope is approved:
 | Password/auth hardening | stronger password policy, production email adapter, recovery abuse controls/retention, access-token invalidation, threat model, and tests |
 | Custom roles/runtime permissions | domain/persistence model, authorization policies, JWT claims, endpoint matrix, Admin navigation, migration, and tests |
 | Additional content/export formats | DTOs, sanitizer, Composite/rendering/export boundaries, editor/preview parity, and deployment dependencies |
-| Production hardening | CSP/security headers, rate limiting, readiness, real-PostgreSQL tests, automated browser E2E, CI/CD, monitoring, backups, and rollback |
+| Production hardening | distributed/edge abuse controls, proxy/header review, automated browser E2E, CI/CD, monitoring, backups, and rollback |
 
 `AGENTS.md`, `docs/API_CONTRACT.md`, `docs/ARCHITECTURE.md`,
 `docs/DEPLOYMENT.md`, and this report must be updated together when those
 decisions become approved implementation scope.
 
-## Phase 7B readiness
+## Phase 7B follow-up
 
-The implementation is ready to enter Phase 7B. That pass must rerun the full
-desktop and device-width browser matrix, perform a dedicated console/network
-inspection, repeat clean-database migration verification, and make the final
-deployment-readiness decision. Readiness to begin Phase 7B is not production
-approval.
+Phase 7B reran the desktop and device-width browser matrix, performed a focused
+console inspection, repeated migration verification against both an existing
+database and a clean temporary database, and recorded the final checkpoint
+decision in `docs/PHASE_7B_READINESS.md`. That result is readiness evidence for
+the current academic/demo scope, not production approval.

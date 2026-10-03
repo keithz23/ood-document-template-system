@@ -6,9 +6,10 @@ active templates, create independent drafts, validate placeholders, preview,
 finalize, reopen, and download HTML documents. Administrators manage
 categories, templates, versions, placeholders, users, and read-only audit logs.
 
-This repository is at a **post-Phase 6H implementation checkpoint** and is
-ready for a separately scoped Phase 7B QA/deployment-readiness pass. It is not
-declared feature-complete or production-ready, and it has not been deployed.
+This repository has completed the **Phase 7B final QA and deployment-readiness
+checkpoint**. It is not declared feature-complete or production-ready, and it
+has not been deployed. The checkpoint confirms the current academic/demo scope
+and records the remaining work required before a public production release.
 Registration, local logout, profile editing, password change/recovery, client
 Document rich-text editing, administrator user creation/editing, and a fixed
 permission-based authorization matrix are implemented. Custom permissions and
@@ -78,8 +79,9 @@ the Domain layer. See [Architecture](docs/ARCHITECTURE.md),
    ```
 
 Open the frontend at [http://localhost:3000](http://localhost:3000). The API is
-at `http://localhost:5000`, its liveness endpoint is `/health`, and Swagger UI
-is available at `/swagger` in Development.
+at `http://localhost:5000`; `/health` and `/health/live` are liveness probes,
+`/health/ready` checks PostgreSQL connectivity, and Swagger UI is available at
+`/swagger` in Development.
 
 ### Deterministic development accounts
 
@@ -110,13 +112,16 @@ dotnet test backend/DocumentTemplateSystem.sln
 git diff --check
 ```
 
-The current automated backend suite contains 47 unit tests and 58 integration
-tests. Browser regression coverage is currently manual; see the
-[Phase 7 checkpoint](docs/PHASE_7_CHECKPOINT.md).
+The current automated backend suite contains 47 unit tests and 63 integration
+tests. Browser regression coverage is currently manual. See the
+[Phase 7B readiness report](docs/PHASE_7B_READINESS.md) and the earlier
+[Phase 7A checkpoint](docs/PHASE_7_CHECKPOINT.md).
 
 ## Deployment status
 
-No deployment is performed or implied by this checkpoint. The repository does
-not yet include production application images, infrastructure-as-code, or a
-CI/CD release pipeline. See [Deployment preparation](docs/DEPLOYMENT.md) for
-prerequisites, risks, and the recommended future deployment order.
+No deployment is performed or implied by this checkpoint. The current build is
+suitable for a local academic demonstration, but the repository does not yet
+include production application images, infrastructure-as-code, a production
+email adapter, or a CI/CD release pipeline. See
+[Deployment preparation](docs/DEPLOYMENT.md) for prerequisites, risks, and the
+recommended future deployment order.

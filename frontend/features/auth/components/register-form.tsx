@@ -5,12 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, FileText, LoaderCircle, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/features/auth/auth-provider";
 import { getApiErrorMessage } from "@/services/api-errors";
 import { registerUser } from "@/services/auth-api";
 
@@ -30,6 +32,7 @@ const registerSchema = z
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
+  const { session, isReady } = useAuth();
   const router = useRouter();
   const {
     register,
@@ -50,6 +53,10 @@ export function RegisterForm() {
     onSuccess: () => router.replace("/login?registered=1"),
   });
 
+  useEffect(() => {
+    if (isReady && session) router.replace("/templates");
+  }, [isReady, router, session]);
+
   const submit = handleSubmit((values) => {
     registerMutation.mutate({
       username: values.username,
@@ -58,6 +65,18 @@ export function RegisterForm() {
       password: values.password,
     });
   });
+
+  if (!isReady || session) {
+    return (
+      <main
+        aria-busy="true"
+        aria-label="Checking your session"
+        className="flex min-h-screen items-center justify-center bg-background"
+      >
+        <LoaderCircle aria-hidden="true" className="size-5 animate-spin text-muted-foreground" />
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 sm:px-6">

@@ -86,10 +86,10 @@ export function TemplateGallery({
           {visibleTemplates.map((template) => (
             <article
               key={template.id}
-              className="group flex min-h-72 flex-col rounded-xl border bg-card p-5 transition-colors hover:border-slate-300"
+              className="group flex min-h-72 flex-col rounded-xl border bg-card p-5 transition-colors hover:border-muted-foreground/35"
             >
               <div className="flex items-start justify-between gap-4">
-                <span className="flex size-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                   <FileText aria-hidden="true" className="size-5" />
                 </span>
                 <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">

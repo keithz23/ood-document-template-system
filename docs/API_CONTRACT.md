@@ -2,8 +2,9 @@
 
 Status: **approved implementation contract**.
 
-This document is the approved REST contract through Phase 6H and the Phase 7A
-QA checkpoint. It covers the author workflow, registration and local logout,
+This document is the approved REST contract through Phase 6H and the completed
+Phase 7B QA/deployment-readiness checkpoint. It covers the author workflow,
+registration and local logout,
 Category, Template, TemplateVersion, Placeholder, User, and read-only Audit Log
 administration, Admin user creation/editing, self-profile management, password
 change/recovery, and the fixed permission matrix. Phase 7 does not declare the
@@ -40,6 +41,10 @@ added later and conflicts with this document, the decision priority in
 - The current frontend filters template and document lists in memory. Search,
   category filtering, status filtering, sorting, and pagination are therefore
   intentionally absent from the server contract in this first slice.
+- Public authentication mutations are rate-limited per remote-IP/path
+  partition. A rejected request returns the shared error contract with
+  `429 Too Many Requests`, code `RATE_LIMIT_EXCEEDED`, and may include a
+  `Retry-After` response header.
 
 ## 2. Integration decisions and remaining constraints
 
@@ -116,6 +121,9 @@ not be silently re-encoded into entities or persistence.
 18. **Recovery privacy:** forgot-password returns the same generic response for
     unknown, inactive, and active accounts. Only an active matching account
     receives a reset token. Reset also requires the account to remain active.
+19. **Rich-image sources:** server sanitization retains an image `src` only when
+    it is an absolute HTTP or HTTPS URL. Relative, `data:`, scriptable, and
+    unsupported image sources are removed before persistence or rendering.
 
 ## 3. Shared DTOs
 
@@ -155,6 +163,19 @@ Fields:
 
 `ValidationErrorDto` contains `field`, `code`, `message`, and optional
 `placeholderKey`.
+
+Rate-limit rejection example:
+
+```json
+{
+  "status": 429,
+  "code": "RATE_LIMIT_EXCEEDED",
+  "title": "Too many authentication requests.",
+  "detail": "Wait before trying again.",
+  "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "errors": null
+}
+```
 
 ### 3.2 Enum contracts
 
@@ -472,6 +493,7 @@ Both properties are strings.
 - `200 OK` — credentials accepted.
 - `400 Bad Request` — malformed body or required field missing.
 - `401 Unauthorized` — credentials invalid or user inactive.
+- `429 Too Many Requests` — the public-auth rate limit was exceeded.
 - `500 Internal Server Error` — unexpected server failure.
 
 **Example request**
@@ -489,6 +511,7 @@ Content-Type: application/json
 
 - `VALIDATION_FAILED` (`400`)
 - `INVALID_CREDENTIALS` (`401`)
+- `RATE_LIMIT_EXCEEDED` (`429`)
 
 ### 5.2 Register
 
@@ -524,7 +547,7 @@ to sign-in after success.
 - Password confirmation is a client validation field and is not transmitted.
 
 **HTTP status codes:** `201 Created`, `400 Bad Request`, `409 Conflict`,
-`500 Internal Server Error`.
+`429 Too Many Requests`, `500 Internal Server Error`.
 
 **Example request**
 
@@ -538,7 +561,7 @@ Content-Type: application/json
 **Example response:** the `UserDto` in section 3.3.
 
 **Error cases:** `VALIDATION_FAILED` (`400`), `USERNAME_ALREADY_EXISTS` (`409`),
-`EMAIL_ALREADY_EXISTS` (`409`).
+`EMAIL_ALREADY_EXISTS` (`409`), `RATE_LIMIT_EXCEEDED` (`429`).
 
 ### 5.3 Get current identity
 
@@ -2561,10 +2584,10 @@ accepted from the client.
   persisted reset-token data.
 
 **HTTP status codes:** `202 Accepted`, `400 Bad Request`,
-`500 Internal Server Error`.
+`429 Too Many Requests`, `500 Internal Server Error`.
 
-**Error cases:** `VALIDATION_FAILED` (`400`). Account lookup never produces a
-`404` or authentication-specific response.
+**Error cases:** `VALIDATION_FAILED` (`400`), `RATE_LIMIT_EXCEEDED` (`429`).
+Account lookup never produces a `404` or authentication-specific response.
 
 ### 19.4 Reset password
 
@@ -2604,10 +2627,11 @@ and sends it in the JSON body.
   redirects to `/login?passwordReset=1`.
 
 **HTTP status codes:** `204 No Content`, `400 Bad Request`,
-`422 Unprocessable Entity`, `500 Internal Server Error`.
+`422 Unprocessable Entity`, `429 Too Many Requests`,
+`500 Internal Server Error`.
 
 **Error cases:** `VALIDATION_FAILED` (`400`),
-`INVALID_RESET_TOKEN` (`422`).
+`INVALID_RESET_TOKEN` (`422`), `RATE_LIMIT_EXCEEDED` (`429`).
 
 ### 19.5 Password reset token persistence
 
@@ -2626,3 +2650,19 @@ CreatedAt
 key uses restrictive deletion. Raw tokens are never stored. The reset workflow
 uses one transaction so password update and one-time token consumption commit
 together.
+
+## 20. Operational endpoints
+
+These routes are outside the `/api` business prefix and require no
+authentication. They are intended for platform probes, not application UI.
+
+| Purpose | Method | Path | Healthy response | Unhealthy response |
+|---|---|---|---|---|
+| Backward-compatible liveness | `GET` | `/health` | `200` | not dependency-sensitive |
+| Process liveness | `GET` | `/health/live` | `200` | not dependency-sensitive |
+| PostgreSQL readiness | `GET` | `/health/ready` | `200` | `503` |
+
+Readiness verifies that EF Core can connect to the configured PostgreSQL
+database. It does not apply migrations, prove migration currency, or validate
+future external services. Operational responses receive the normal API
+security headers.

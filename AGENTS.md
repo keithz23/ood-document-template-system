@@ -1204,8 +1204,8 @@ Identify the conflict and request a decision before making a breaking domain cha
 The repository has implemented the author workflow and administration through
 Phase 6H, including registration and local logout, profile editing, password
 change/recovery, author Document rich-text editing, Admin user creation/editing,
-and the fixed role-to-permission matrix. Phase 7
-remains a QA, cleanup, and documentation checkpoint; it is not a production
+and the fixed role-to-permission matrix. Phase 7B has completed its QA,
+cleanup, hardening, and documentation checkpoint; it is not a production
 release or a declaration that the product is feature-complete.
 
 The implemented permission model is intentionally simple and code-defined.

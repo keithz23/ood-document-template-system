@@ -37,8 +37,6 @@ public static class DependencyInjection
         services.AddSingleton<IEmailService, DevelopmentEmailService>();
         services.AddScoped<IHtmlContentSanitizer, AllowlistHtmlContentSanitizer>();
         services.AddSingleton(TimeProvider.System);
-        services.Configure<JwtOptions>(
-            configuration.GetSection(JwtOptions.SectionName));
         services.Configure<DevelopmentEmailOptions>(
             configuration.GetSection(DevelopmentEmailOptions.SectionName));
 

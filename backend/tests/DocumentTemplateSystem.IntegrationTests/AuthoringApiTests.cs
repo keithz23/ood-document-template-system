@@ -340,7 +340,9 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             Content = JsonContent.Create(
                 new UpdateDraftDocumentRequestDto(
                     null,
-                    "<h1>Safe</h1><script>alert('unsafe')</script><p onclick=\"alert(1)\">Body</p>",
+                    "<h1>Safe</h1><script>alert('unsafe')</script><p onclick=\"alert(1)\">Body</p>"
+                    + "<img src=\"javascript:alert(1)\"><img src=\"data:image/png;base64,AAAA\">"
+                    + "<img src=\"/relative.png\"><img src=\"https://images.example.test/safe.png\" alt=\"Safe\">",
                     null),
                 options: JsonOptions)
         };
@@ -351,10 +353,18 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.Contains("<h1>Safe</h1>", updated?.Content);
         Assert.DoesNotContain("<script", updated?.Content, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("onclick", updated?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("javascript:", updated?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("data:image", updated?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/relative.png", updated?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("https://images.example.test/safe.png", updated?.Content);
 
         var download = await client.GetStringAsync($"/api/documents/{document.Id}/download");
         Assert.DoesNotContain("<script", download, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("onclick", download, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("javascript:", download, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("data:image", download, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/relative.png", download, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("https://images.example.test/safe.png", download);
     }
 
     [Fact]

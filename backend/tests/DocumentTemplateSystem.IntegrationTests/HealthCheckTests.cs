@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Options;
 
 namespace DocumentTemplateSystem.IntegrationTests;
 
@@ -25,6 +26,75 @@ public sealed class HealthCheckTests : IClassFixture<WebApplicationFactory<Progr
 
         response.EnsureSuccessStatusCode();
         Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task LivenessEndpoint_DoesNotDependOnDatabaseReadiness()
+    {
+        var response = await _client.GetAsync("/health/live");
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task ReadinessEndpoint_ReturnsUnavailableWhenDatabaseCannotConnect()
+    {
+        await using var factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("SeedData:Enabled", "false");
+                builder.UseSetting(
+                    "ConnectionStrings:DefaultConnection",
+                    "Host=127.0.0.1;Port=1;Database=unavailable;Username=none;Password=none;Timeout=1;Command Timeout=1");
+            });
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        var response = await client.GetAsync("/health/ready");
+
+        Assert.Equal(System.Net.HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ApiResponses_IncludeSecurityHeaders()
+    {
+        var response = await _client.GetAsync("/health");
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Equal("no-referrer", response.Headers.GetValues("Referrer-Policy").Single());
+        Assert.Equal("DENY", response.Headers.GetValues("X-Frame-Options").Single());
+        Assert.Contains("frame-ancestors 'none'", response.Headers
+            .GetValues("Content-Security-Policy")
+            .Single());
+        Assert.Contains("img-src http: https:", response.Headers
+            .GetValues("Content-Security-Policy")
+            .Single());
+        Assert.Contains("camera=()", response.Headers
+            .GetValues("Permissions-Policy")
+            .Single());
+    }
+
+    [Fact]
+    public void ApiStartup_WithInvalidJwtConfiguration_FailsValidation()
+    {
+        using var factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("SeedData:Enabled", "false");
+                builder.UseSetting("Jwt:Key", "too-short");
+            });
+
+        var exception = Assert.Throws<OptionsValidationException>(() =>
+            factory.CreateClient(new WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://localhost")
+            }));
+
+        Assert.Contains("key of at least 32 bytes", exception.Message);
     }
 
     [Fact]

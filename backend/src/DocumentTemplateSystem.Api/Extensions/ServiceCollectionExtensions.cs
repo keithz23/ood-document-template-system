@@ -1,7 +1,10 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using DocumentTemplateSystem.Api.Authentication;
+using DocumentTemplateSystem.Api.Health;
 using DocumentTemplateSystem.Api.Middleware;
 using DocumentTemplateSystem.Api.OpenApi;
 using DocumentTemplateSystem.Application.Authorization;
@@ -9,8 +12,11 @@ using DocumentTemplateSystem.Application.DTOs;
 using DocumentTemplateSystem.Application.Interfaces;
 using DocumentTemplateSystem.Application.Services;
 using DocumentTemplateSystem.Domain.Patterns.Strategy;
+using DocumentTemplateSystem.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
@@ -19,6 +25,7 @@ namespace DocumentTemplateSystem.Api.Extensions;
 public static class ServiceCollectionExtensions
 {
     public const string FrontendCorsPolicy = "Frontend";
+    public const string PublicAuthenticationRateLimitPolicy = "PublicAuthentication";
 
     public static IServiceCollection AddApiServices(
         this IServiceCollection services,
@@ -74,7 +81,11 @@ public static class ServiceCollectionExtensions
             });
             options.OperationFilter<AllowAnonymousOperationFilter>();
         });
-        services.AddHealthChecks();
+        services
+            .AddHealthChecks()
+            .AddCheck<DatabaseReadinessHealthCheck>(
+                "database",
+                tags: ["ready"]);
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserContext, CurrentUserContext>();
         services.AddScoped<AuthenticationService>();
@@ -87,6 +98,17 @@ public static class ServiceCollectionExtensions
         services.AddScoped<PasswordRecoveryService>();
         services.AddSingleton<IDocumentRenderer, HtmlDocumentRenderer>();
         services.AddSingleton<PlaceholderValidator>();
+        services
+            .AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.SectionName))
+            .Validate(
+                settings => !string.IsNullOrWhiteSpace(settings.Issuer)
+                    && !string.IsNullOrWhiteSpace(settings.Audience)
+                    && !string.IsNullOrWhiteSpace(settings.Key)
+                    && Encoding.UTF8.GetByteCount(settings.Key) >= 32
+                    && settings.ExpiresMinutes > 0,
+                "Jwt configuration requires an issuer, audience, positive expiry, and a key of at least 32 bytes.")
+            .ValidateOnStart();
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -159,6 +181,51 @@ public static class ServiceCollectionExtensions
                     .AllowAnyMethod()
                     .WithExposedHeaders("Content-Disposition");
             });
+        });
+
+        var permitLimit = Math.Max(
+            1,
+            configuration.GetValue(
+                "RateLimiting:PublicAuthentication:PermitLimit",
+                20));
+        var windowSeconds = Math.Max(
+            1,
+            configuration.GetValue(
+                "RateLimiting:PublicAuthentication:WindowSeconds",
+                60));
+
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                if (context.Lease.TryGetMetadata(
+                    MetadataName.RetryAfter,
+                    out var retryAfter))
+                {
+                    context.HttpContext.Response.Headers.RetryAfter = Math.Ceiling(
+                            retryAfter.TotalSeconds)
+                        .ToString(CultureInfo.InvariantCulture);
+                }
+
+                await ApiExceptionMiddleware.WriteErrorAsync(
+                    context.HttpContext,
+                    StatusCodes.Status429TooManyRequests,
+                    "RATE_LIMIT_EXCEEDED",
+                    "Too many authentication requests.",
+                    "Wait before trying again.");
+            };
+            options.AddPolicy(
+                PublicAuthenticationRateLimitPolicy,
+                context => RateLimitPartition.GetFixedWindowLimiter(
+                    $"{context.Connection.RemoteIpAddress}:{context.Request.Path.Value?.ToLowerInvariant()}",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        AutoReplenishment = true,
+                        PermitLimit = permitLimit,
+                        QueueLimit = 0,
+                        Window = TimeSpan.FromSeconds(windowSeconds)
+                    }));
         });
 
         return services;

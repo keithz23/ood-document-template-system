@@ -14,9 +14,9 @@ export function AdminStatusBadge({
       className={cn(
         "font-medium",
         tone === "positive" &&
-          "border-emerald-200 bg-emerald-50 text-emerald-800",
-        tone === "warning" && "border-amber-200 bg-amber-50 text-amber-900",
-        tone === "neutral" && "border-slate-200 bg-slate-100 text-slate-700",
+          "border-success/25 bg-success-subtle text-success",
+        tone === "warning" && "border-warning/25 bg-warning-subtle text-warning",
+        tone === "neutral" && "border-border bg-muted text-muted-foreground",
       )}
     >
       {label}

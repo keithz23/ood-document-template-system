@@ -1,7 +1,7 @@
 # Architecture
 
-Status: **implemented architecture through Phase 6H; ready for the separate
-Phase 7B QA/deployment-readiness pass**.
+Status: **implemented architecture through Phase 6H with the Phase 7B
+QA/deployment-readiness checkpoint complete**.
 
 This document is an implementation view of the approved model in `AGENTS.md`.
 The repository does not contain a separate approved ERD or Class Diagram file;
@@ -27,7 +27,8 @@ Dependencies point inward: Domain has no EF Core or API dependency;
 Application coordinates use cases and owns transport DTOs/interfaces;
 Infrastructure implements persistence, JWT, hashing, rendering, and repository
 interfaces; Api handles HTTP, authorization, validation boundaries, middleware,
-Swagger, CORS, and health routing. Controllers delegate workflows to
+Swagger, exact-origin CORS, security headers, public-auth rate limiting, and
+separate liveness/readiness health routing. Controllers delegate workflows to
 Application services.
 
 ## Domain and persistence model
@@ -168,7 +169,25 @@ component and persist the approved HTML subset. Published versions and
 Finalized Documents render through its read-only mode. Preview remains an
 explicit server render in a sandboxed iframe. Infrastructure provides an
 allowlist HTML sanitizer used before rich content is persisted or rendered, and
-the Composite renderer continues to replace escaped placeholder values.
+the Composite renderer continues to replace escaped placeholder values. Image
+sources are retained only when they are absolute HTTP or HTTPS URLs; relative,
+`data:`, scriptable, and other unsupported sources are removed server-side.
+
+## Phase 7B operational boundaries
+
+- `/health` and `/health/live` are process liveness probes. `/health/ready`
+  verifies that EF Core can reach PostgreSQL; it does not run migrations or
+  perform a deep dependency diagnostic.
+- Login, registration, forgot-password, and reset-password use an in-process
+  fixed-window limiter partitioned by remote IP and request path. This protects
+  a single demo/API process; a public multi-instance deployment still needs an
+  edge or distributed abuse-control decision.
+- JWT configuration is validated at startup. Issuer and audience must be
+  non-empty, expiry must be positive, and the signing key must be at least 32
+  bytes. Invalid configuration prevents API startup.
+- Non-Development responses use HSTS. API responses also receive CSP,
+  clickjacking, MIME-sniffing, referrer, and permissions-policy headers;
+  Development Swagger is excluded so its interactive assets continue to work.
 
 ## Areas that require revisiting after future scope
 
@@ -181,5 +200,7 @@ the Composite renderer continues to replace escaped placeholder values.
   revised JWT/policy contracts, management UI, and boundary tests;
 - additional content/export formats require renderer, sanitizer, preview, and
   download parity review;
-- production readiness still requires CSP/security headers, rate limiting,
-  database readiness checks, automated browser E2E, and operational design.
+- production readiness still requires a distributed/edge rate-limit design,
+  automated browser E2E, production email delivery, token-lifecycle hardening,
+  deployment images/CI, observability, backup/restore drills, and operational
+  ownership.

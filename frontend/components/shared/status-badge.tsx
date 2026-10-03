@@ -7,8 +7,8 @@ export function StatusBadge({ status }: { status: DocumentStatus }) {
       variant="outline"
       className={
         status === "Finalized"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-          : "border-slate-200 bg-slate-100 text-slate-700"
+          ? "border-success/25 bg-success-subtle text-success"
+          : "border-border bg-muted text-muted-foreground"
       }
     >
       {status}
