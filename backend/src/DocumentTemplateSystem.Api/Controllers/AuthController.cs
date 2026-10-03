@@ -8,7 +8,9 @@ namespace DocumentTemplateSystem.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [Produces("application/json")]
-public sealed class AuthController(AuthenticationService authenticationService)
+public sealed class AuthController(
+    AuthenticationService authenticationService,
+    PasswordRecoveryService passwordRecoveryService)
     : ControllerBase
 {
     [AllowAnonymous]
@@ -36,6 +38,35 @@ public sealed class AuthController(AuthenticationService authenticationService)
     {
         var user = await authenticationService.RegisterAsync(request, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, user);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(ForgotPasswordResponseDto), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<ForgotPasswordResponseDto>> ForgotPassword(
+        ForgotPasswordRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var response = await passwordRecoveryService.ForgotPasswordAsync(
+            request,
+            cancellationToken);
+        return Accepted(response);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ResetPassword(
+        ResetPasswordRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        await passwordRecoveryService.ResetPasswordAsync(request, cancellationToken);
+        return NoContent();
     }
 
     [Authorize]

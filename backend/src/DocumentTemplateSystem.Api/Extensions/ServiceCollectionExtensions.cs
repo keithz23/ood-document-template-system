@@ -83,6 +83,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AdminCatalogService>();
         services.AddScoped<AdminTemplateVersionService>();
         services.AddScoped<AdminUserService>();
+        services.AddScoped<AccountService>();
+        services.AddScoped<PasswordRecoveryService>();
         services.AddSingleton<IDocumentRenderer, HtmlDocumentRenderer>();
         services.AddSingleton<PlaceholderValidator>();
         services

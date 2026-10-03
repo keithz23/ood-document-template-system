@@ -134,10 +134,14 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             await client.GetStringAsync("/swagger/v1/swagger.json"));
         var paths = document.RootElement.GetProperty("paths");
 
-        Assert.Equal(32, paths.EnumerateObject().Count());
+        Assert.Equal(36, paths.EnumerateObject().Count());
         Assert.True(paths.TryGetProperty("/api/auth/login", out var loginPath));
         Assert.True(paths.TryGetProperty("/api/auth/register", out var registerPath));
+        Assert.True(paths.TryGetProperty("/api/auth/forgot-password", out var forgotPath));
+        Assert.True(paths.TryGetProperty("/api/auth/reset-password", out var resetPath));
         Assert.True(paths.TryGetProperty("/api/auth/me", out _));
+        Assert.True(paths.TryGetProperty("/api/users/me", out _));
+        Assert.True(paths.TryGetProperty("/api/users/me/change-password", out _));
         Assert.True(paths.TryGetProperty("/api/templates", out _));
         Assert.True(paths.TryGetProperty("/api/templates/{templateId}", out _));
         Assert.True(paths.TryGetProperty(
@@ -198,6 +202,8 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
         Assert.Empty(loginPath.GetProperty("post").GetProperty("security").EnumerateArray());
         Assert.Empty(registerPath.GetProperty("post").GetProperty("security").EnumerateArray());
+        Assert.Empty(forgotPath.GetProperty("post").GetProperty("security").EnumerateArray());
+        Assert.Empty(resetPath.GetProperty("post").GetProperty("security").EnumerateArray());
     }
 
     [Fact]

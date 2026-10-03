@@ -29,10 +29,15 @@ infrastructure-as-code, backups, monitoring, and CI/CD are not included.
 | `Jwt__Key` | yes | Random signing secret of at least 32 bytes, stored outside source control |
 | `Jwt__ExpiresMinutes` | yes | Access-token lifetime |
 | `SeedData__Enabled` | yes | Must be `false` outside local demonstration environments |
+| `DevelopmentEmail__FrontendBaseUrl` | development only | Frontend origin used to compose local reset URLs |
+| `DevelopmentEmail__ExposePasswordResetUrlInLogs` | yes | Must be `false` outside an isolated local Development environment |
 
 Swagger UI and deterministic seeding are restricted to Development by the
 application. `appsettings.Development.json` contains local-only credentials and
 a local JWT key; neither value is suitable for a shared or production system.
+The included email adapter is not a production mailer. Configure a replacement
+`IEmailService` before deployment; never expose password-reset URLs in shared or
+production logs.
 
 ### Frontend
 
@@ -67,9 +72,11 @@ database readiness. Migrations do not run automatically at API startup.
 
 ## Production risks to resolve or accept
 
-- Registration and client-side logout are implemented. Token refresh,
-  revocation, account recovery, password changes, and server-side sessions are
-  not implemented.
+- Registration, client-side logout, profile editing, password change, and
+  one-time password recovery are implemented. Token refresh, access-token
+  revocation, server-side sessions, production mail delivery, and a stronger
+  approved password policy are not implemented. Existing JWTs remain valid
+  until expiry after a password change/reset.
 - JWTs are stored in browser local storage, increasing impact if client-side
   script injection occurs. Session storage and token lifecycle must be
   reassessed during production authentication hardening.
@@ -79,6 +86,10 @@ database readiness. Migrations do not run automatically at API startup.
   externally hosted images.
 - Login rate limiting, lockout, security headers, and operational secret
   rotation are not implemented.
+- Password-recovery rate limiting and abuse monitoring are not implemented.
+  Reset tokens expire after 30 minutes and are stored as hashes, but delivery,
+  anti-abuse controls, and operational retention/cleanup still require a
+  production decision.
 - `/health` does not check PostgreSQL; readiness and liveness are not separated.
 - Automated API tests do not currently exercise a real PostgreSQL container,
   and there is no automated browser end-to-end suite.

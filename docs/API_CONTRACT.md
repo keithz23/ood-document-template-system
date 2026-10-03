@@ -2,15 +2,15 @@
 
 Status: **approved implementation contract**.
 
-This document is the approved REST contract through Phase 6G.1 and the Phase 7
+This document is the approved REST contract through Phase 6H and the Phase 7A
 QA checkpoint. It covers the author workflow, registration and local logout,
 Category, Template, TemplateVersion, Placeholder, User, and read-only Audit Log
-administration, Admin user creation, and the fixed permission matrix. Phase 7
-does not declare the API feature-complete or production-ready.
+administration, Admin user creation/editing, self-profile management, password
+change/recovery, and the fixed permission matrix. Phase 7 does not declare the
+API feature-complete or production-ready.
 
-Password reset, token refresh, custom roles, and runtime permission management
-remain outside this contract. They require contract updates before
-implementation.
+Token refresh, custom roles, and runtime permission management remain outside
+this contract. They require contract updates before implementation.
 
 `AGENTS.md` section 7 is the only approved domain-model source currently present
 in the repository. No separate ERD or Class Diagram file was found. If one is
@@ -106,6 +106,16 @@ not be silently re-encoded into entities or persistence.
 15. **Permissions:** permissions are fixed in code and derived from `Admin` or
     `User`. They are returned by login, registration, and `/api/auth/me`; they
     are not persisted as a new domain model or editable through an API.
+16. **Password rule:** the current project rule requires a non-empty password;
+    Phase 6H reuses it consistently and does not silently introduce a new
+    complexity policy. Production policy hardening remains documented work.
+17. **Password-change session behavior:** successful self-service password
+    change returns `204`; the frontend clears its JWT and authenticated cache
+    and redirects to login. Existing stateless JWTs cannot be revoked by this
+    operation and remain valid until expiry.
+18. **Recovery privacy:** forgot-password returns the same generic response for
+    unknown, inactive, and active accounts. Only an active matching account
+    receives a reset token. Reset also requires the account to remain active.
 
 ## 3. Shared DTOs
 
@@ -375,7 +385,11 @@ approved model; it is not a new Document entity field.
 |---|---|---|
 | Sign in | `POST` | `/api/auth/login` |
 | Register | `POST` | `/api/auth/register` |
+| Forgot password | `POST` | `/api/auth/forgot-password` |
+| Reset password | `POST` | `/api/auth/reset-password` |
 | Current identity | `GET` | `/api/auth/me` |
+| Update own profile | `PATCH` | `/api/users/me` |
+| Change own password | `POST` | `/api/users/me/change-password` |
 | Active template gallery | `GET` | `/api/templates` |
 | Template detail | `GET` | `/api/templates/{templateId}` |
 | Current template version | `GET` | `/api/templates/{templateId}/current-version` |
@@ -400,6 +414,7 @@ approved model; it is not a new Document entity field.
 | Admin list users | `GET` | `/api/admin/users` |
 | Admin create user | `POST` | `/api/admin/users` |
 | Admin user detail | `GET` | `/api/admin/users/{userId}` |
+| Admin edit user | `PATCH` | `/api/admin/users/{userId}` |
 | Admin activate user | `POST` | `/api/admin/users/{userId}/activate` |
 | Admin deactivate user | `POST` | `/api/admin/users/{userId}/deactivate` |
 | Admin update user role | `PATCH` | `/api/admin/users/{userId}/role` |
@@ -1257,10 +1272,10 @@ transport contracts to mirror the retired mock shape:
 
 This contract does not define:
 
-- a server logout endpoint, refresh tokens, password reset, or profile editing;
+- a server logout endpoint, refresh tokens, avatar/profile preferences, or MFA;
 - inactive/draft template browsing for authors;
 - historical template-version browsing outside retained Document history;
-- password administration or Audit Log mutation;
+- Admin password assignment/reset or Audit Log mutation;
 - sharing, comments, teams, collaboration, approval chains, or cross-user access;
 - autosave guarantees, bulk operations, server sorting, pagination, or search;
 - template mutation or editing Published versions;
@@ -2006,6 +2021,11 @@ CreateAdminUserRequestDto
   initialPassword: string
   role: "Admin" | "User"
 
+UpdateAdminUserRequestDto
+  username: string
+  fullName: string
+  email: string
+
 AuditActorDto
   id: string
   username: string
@@ -2026,8 +2046,9 @@ AdminAuditLogDto
 All endpoints in this section require a Bearer token and the permission stated
 for the endpoint. Under the fixed matrix, only `Admin` has these permissions.
 Users are never hard-deleted. Deactivation preserves all foreign-key and
-historical references. Password changes and runtime permission management are
-not defined.
+historical references. Administrator-driven password assignment/reset and
+runtime permission management are not defined; self-service password change
+and recovery are defined separately in section 19.
 
 Self-administration is intentionally limited: the authenticated Admin cannot
 deactivate their own account or change their own role. This phase does not
@@ -2255,6 +2276,46 @@ user's role or historical references.
 `SELF_ROLE_CHANGE_NOT_ALLOWED` (`409`), `AUTHENTICATION_REQUIRED` (`401`),
 `FORBIDDEN` (`403`).
 
+### 16.7 Edit user identity
+
+**Method and path:** `PATCH /api/admin/users/{userId}`
+
+**Authorization:** `Users.Manage`.
+
+**Route parameters:** `userId`. No query parameters.
+
+**Request DTO — UpdateAdminUserRequestDto**
+
+```json
+{
+  "username": "alex.morgan",
+  "fullName": "Alex Morgan",
+  "email": "alex.morgan@example.test"
+}
+```
+
+**Response DTO:** updated `AdminUserDto`.
+
+**Validation and business rules**
+
+- `username`, `fullName`, and `email` are required after trimming.
+- `email` must be syntactically valid.
+- Username and email must remain unique, excluding the target user.
+- The operation does not accept or modify role, activity state, password hash,
+  permissions, or historical references.
+- Submitting unchanged values is idempotent and creates no AuditLog.
+- A meaningful update writes an `AdminEditUser` AuditLog without credential
+  data.
+- Database unique constraints remain authoritative for concurrent writes; a
+  late uniqueness conflict returns `409` rather than silently overwriting data.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`403 Forbidden`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
+
+**Error cases:** `USER_NOT_FOUND` (`404`), `VALIDATION_FAILED` (`400`),
+`USERNAME_ALREADY_EXISTS` (`409`), `EMAIL_ALREADY_EXISTS` (`409`),
+`AUTHENTICATION_REQUIRED` (`401`), `FORBIDDEN` (`403`).
+
 ## 17. Audit Log administration
 
 ### 17.1 List audit logs
@@ -2353,6 +2414,7 @@ Policy mapping:
 - Admin user list/detail require `Users.View`;
 - Admin user creation, activation, deactivation, and role update require
   `Users.Manage`;
+- Admin user identity editing requires `Users.Manage`;
 - read-only Audit Log access requires `AuditLogs.View`.
 
 JWTs include one claim per granted permission. Login, registration, and
@@ -2360,3 +2422,207 @@ JWTs include one claim per granted permission. Login, registration, and
 The frontend uses that list only to present permitted navigation/actions; the
 API policies remain authoritative. A valid token without the policy permission
 receives `403 Forbidden`.
+
+## 19. Phase 6H account and profile management
+
+Phase 6H keeps account DTOs separate from the `User` and
+`PasswordResetToken` domain entities. Passwords, hashes, and persisted reset
+records are never returned.
+
+```text
+UpdateOwnProfileRequestDto
+  fullName: string
+  email: string
+
+ChangePasswordRequestDto
+  currentPassword: string
+  newPassword: string
+
+ForgotPasswordRequestDto
+  email: string
+
+ForgotPasswordResponseDto
+  message: string
+
+ResetPasswordRequestDto
+  token: string
+  newPassword: string
+```
+
+Password confirmation is enforced by the frontend and is not transmitted.
+
+### 19.1 Update own profile
+
+**Method and path:** `PATCH /api/users/me`
+
+**Authorization:** any authenticated, active user. No additional permission is
+required.
+
+**Route/query parameters:** None.
+
+**Request DTO — UpdateOwnProfileRequestDto**
+
+```json
+{
+  "fullName": "Maya Chen",
+  "email": "maya.chen@example.test"
+}
+```
+
+**Response DTO:** updated `UserDto`, including the unchanged role and effective
+permission list.
+
+**Validation and business rules**
+
+- `fullName` and `email` are required after trimming.
+- `email` must be syntactically valid and unique, excluding the current user.
+- Username is intentionally immutable through self-service.
+- Role, permissions, activity state, password, and identifiers cannot be
+  supplied or changed.
+- An unchanged request is idempotent and creates no AuditLog.
+- A meaningful update writes a `ProfileUpdate` AuditLog.
+- The frontend replaces its cached current-user identity after success.
+- A late database uniqueness conflict returns `409`.
+
+**HTTP status codes:** `200 OK`, `400 Bad Request`, `401 Unauthorized`,
+`409 Conflict`, `500 Internal Server Error`.
+
+**Error cases:** `VALIDATION_FAILED` (`400`),
+`EMAIL_ALREADY_EXISTS` (`409`), `AUTHENTICATION_REQUIRED` (`401`).
+
+### 19.2 Change own password
+
+**Method and path:** `POST /api/users/me/change-password`
+
+**Authorization:** any authenticated, active user. No user identifier is
+accepted from the client.
+
+**Request DTO — ChangePasswordRequestDto**
+
+```json
+{
+  "currentPassword": "current-password",
+  "newPassword": "new-password"
+}
+```
+
+**Response DTO:** None.
+
+**Validation and business rules**
+
+- Both values are required. The new password follows the current project rule:
+  it must be non-empty.
+- `currentPassword` must verify against the authenticated user's stored hash.
+- The new password is hashed with the existing password hasher.
+- Success writes a `ChangePassword` AuditLog without password material.
+- Success returns `204`; the frontend clears the local JWT, authenticated
+  identity, and query cache, then redirects to `/login?passwordChanged=1`.
+- Because JWTs are stateless and there is no revocation store, other previously
+  issued tokens remain valid until their configured expiry.
+
+**HTTP status codes:** `204 No Content`, `400 Bad Request`,
+`401 Unauthorized`, `500 Internal Server Error`.
+
+**Error cases:** `VALIDATION_FAILED` (`400`),
+`CURRENT_PASSWORD_INVALID` (`400`), `AUTHENTICATION_REQUIRED` (`401`).
+
+### 19.3 Forgot password
+
+**Method and path:** `POST /api/auth/forgot-password`
+
+**Authorization:** Anonymous.
+
+**Route/query parameters:** None.
+
+**Request DTO — ForgotPasswordRequestDto**
+
+```json
+{ "email": "maya@example.test" }
+```
+
+**Response DTO — ForgotPasswordResponseDto**
+
+```json
+{
+  "message": "If an active account matches that email, password reset instructions have been sent."
+}
+```
+
+**Validation and privacy rules**
+
+- `email` is required and must be syntactically valid; malformed input receives
+  ordinary field validation.
+- A syntactically valid unknown, inactive, or active account receives the same
+  `202` response semantics.
+- Only an active matching account receives a new token and development email.
+- The raw token is cryptographically random and is passed only to the email
+  abstraction. Only its SHA-256 hash is persisted.
+- The API response never contains the raw token, reset URL, account state, or
+  persisted reset-token data.
+
+**HTTP status codes:** `202 Accepted`, `400 Bad Request`,
+`500 Internal Server Error`.
+
+**Error cases:** `VALIDATION_FAILED` (`400`). Account lookup never produces a
+`404` or authentication-specific response.
+
+### 19.4 Reset password
+
+**Method and path:** `POST /api/auth/reset-password`
+
+**Authorization:** Anonymous.
+
+**Route/query parameters:** None. The frontend reads `token` from its own URL
+and sends it in the JSON body.
+
+**Request DTO — ResetPasswordRequestDto**
+
+```json
+{
+  "token": "raw-url-safe-reset-token",
+  "newPassword": "new-password"
+}
+```
+
+**Response DTO:** None. The user is not authenticated automatically.
+
+**Validation and security rules**
+
+- `token` and `newPassword` are required. The new password follows the current
+  non-empty project rule.
+- The raw token is SHA-256 hashed before lookup and is never persisted.
+  An explicitly enabled Development-only email adapter may log the reset URL;
+  non-Development environments must not expose it.
+- Persisted tokens expire 30 minutes after creation and may be used once.
+- Invalid, expired, already-used, unknown-user, and inactive-user cases return
+  the same `INVALID_RESET_TOKEN` response.
+- If an account becomes inactive after token issuance, reset is rejected. The
+  token remains unusable while inactive and expires normally.
+- Password update and marking `UsedAt` occur atomically. A concurrent second
+  use cannot succeed.
+- Success writes a `ResetPassword` AuditLog and returns `204`. The frontend
+  redirects to `/login?passwordReset=1`.
+
+**HTTP status codes:** `204 No Content`, `400 Bad Request`,
+`422 Unprocessable Entity`, `500 Internal Server Error`.
+
+**Error cases:** `VALIDATION_FAILED` (`400`),
+`INVALID_RESET_TOKEN` (`422`).
+
+### 19.5 Password reset token persistence
+
+`PasswordResetToken` is a domain entity and persistence record with:
+
+```text
+Id
+UserId
+TokenHash
+ExpiresAt
+UsedAt?
+CreatedAt
+```
+
+`User 1 -> 0..* PasswordResetToken`. `TokenHash` is unique; the User foreign
+key uses restrictive deletion. Raw tokens are never stored. The reset workflow
+uses one transaction so password update and one-time token consumption commit
+together.

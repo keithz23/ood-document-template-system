@@ -27,6 +27,9 @@ public sealed class PersistenceModelTests
         AssertUniqueIndex(model.FindEntityType(typeof(User)), nameof(User.Username));
         AssertUniqueIndex(model.FindEntityType(typeof(User)), nameof(User.Email));
         AssertUniqueIndex(
+            model.FindEntityType(typeof(PasswordResetToken)),
+            nameof(PasswordResetToken.TokenHash));
+        AssertUniqueIndex(
             model.FindEntityType(typeof(TemplateVersion)),
             nameof(TemplateVersion.TemplateId),
             nameof(TemplateVersion.VersionNumber));
@@ -64,6 +67,9 @@ public sealed class PersistenceModelTests
         Assert.Equal(
             DeleteBehavior.SetNull,
             FindForeignKey<DocumentPlaceholderValue, Placeholder>(model).DeleteBehavior);
+        Assert.Equal(
+            DeleteBehavior.Restrict,
+            FindForeignKey<PasswordResetToken, User>(model).DeleteBehavior);
     }
 
     [Fact]

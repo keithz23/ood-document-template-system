@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **implemented architecture through Phase 6G.1; ready for the separate
+Status: **implemented architecture through Phase 6H; ready for the separate
 Phase 7B QA/deployment-readiness pass**.
 
 This document is an implementation view of the approved model in `AGENTS.md`.
@@ -39,6 +39,7 @@ erDiagram
     USER ||--o{ TEMPLATE_VERSION : creates_or_publishes
     USER ||--o{ DOCUMENT : creates
     USER ||--o{ AUDIT_LOG : performs
+    USER ||--o{ PASSWORD_RESET_TOKEN : owns
     CATEGORY ||--o{ TEMPLATE : contains
     TEMPLATE ||--|{ TEMPLATE_VERSION : versions
     TEMPLATE_VERSION ||--o{ PLACEHOLDER : defines
@@ -48,12 +49,13 @@ erDiagram
 ```
 
 The database contains `Users`, `Categories`, `Templates`, `TemplateVersions`,
-`Placeholders`, `Documents`, `DocumentPlaceholderValues`, and `AuditLogs`.
+`Placeholders`, `Documents`, `DocumentPlaceholderValues`, `AuditLogs`, and
+`PasswordResetTokens`.
 Important enforcement is split deliberately across layers:
 
 - unique indexes protect `User.Username`, `User.Email`,
   `(TemplateVersion.TemplateId, VersionNumber)`, and
-  `(Placeholder.TemplateVersionId, Key)`;
+  `(Placeholder.TemplateVersionId, Key)`, plus reset-token hashes;
 - a filtered unique index permits at most one current TemplateVersion per
   Template;
 - `CK_TemplateVersions_CurrentRequiresPublished` prevents a Draft version from
@@ -113,6 +115,11 @@ than a controller conditional.
 
 - `AuthenticationService` registers active `User` accounts, validates active
   users, verifies password hashes, and returns effective permissions.
+- `AccountService` updates the authenticated user's name/email, verifies the
+  current password before a password change, and records non-secret audit data.
+- `PasswordRecoveryService` issues 30-minute opaque reset tokens, persists only
+  SHA-256 hashes, returns enumeration-resistant public responses, and delegates
+  atomic one-time password reset to the persistence boundary.
 - `TemplateService` exposes only Active templates with one current Published
   version to author workflows.
 - `DocumentService` creates through Prototype, enforces ownership, validates
@@ -121,8 +128,17 @@ than a controller conditional.
 - `AdminCatalogService` manages Category and Template metadata with audit logs.
 - `AdminTemplateVersionService` manages Draft versions and placeholders,
   publishing, current selection, and audit logs.
-- `AdminUserService` creates accounts with hashed initial passwords, changes
-  activation and role, blocks invalid self-management, and records audit logs.
+- `AdminUserService` creates accounts with hashed initial passwords, edits
+  identity, changes activation and role, blocks invalid self-management, and
+  records audit logs.
+
+`IEmailService` is an Application boundary. The current Infrastructure
+implementation is a Development-safe adapter that may log a frontend reset URL
+only when explicitly configured; a production delivery adapter remains
+required. `PasswordResetTokens.TokenHash` is unique and its User foreign key is
+restrictive. Reset completion conditionally consumes an unused, unexpired token
+and updates an active user's password inside one database transaction so a
+concurrent second use cannot succeed.
 
 The REST surface is defined in `docs/API_CONTRACT.md`. API policies require
 code-defined permission claims. `Admin` receives every current permission;
@@ -142,6 +158,11 @@ client. A `401` or explicit logout clears that state and the authenticated query
 cache before returning the user to login. This is an MVP choice and a production
 security consideration, not an architecture invariant.
 
+The guarded `/profile` route updates the current-user query and stored identity
+after self-service edits. A successful password change clears local auth state
+and returns to sign-in. Public forgot/reset forms do not reveal account state,
+do not auto-login, and keep password confirmation client-only.
+
 Admin Draft TemplateVersion and author Draft Document screens share a TipTap
 component and persist the approved HTML subset. Published versions and
 Finalized Documents render through its read-only mode. Preview remains an
@@ -153,8 +174,9 @@ the Composite renderer continues to replace escaped placeholder values.
 
 - refresh-token or server-side session work must revisit token ownership,
   revocation, browser storage, logout semantics, and auth diagrams;
-- password change/recovery must add an approved password policy and secure
-  recovery lifecycle rather than reusing Admin creation;
+- password hardening must replace the current non-empty rule with an approved
+  policy and add production email delivery; refresh/revocation must also decide
+  whether password changes invalidate outstanding access tokens;
 - custom roles or runtime permissions require a domain and persistence decision,
   revised JWT/policy contracts, management UI, and boundary tests;
 - additional content/export formats require renderer, sanitizer, preview, and

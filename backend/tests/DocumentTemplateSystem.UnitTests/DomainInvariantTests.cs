@@ -164,6 +164,44 @@ public sealed class DomainInvariantTests
         Assert.Equal(PlaceholderDataType.Email, storedValue.DataTypeSnapshot);
     }
 
+    [Fact]
+    public void User_ProfileAndPasswordChangesPreserveRoleAndActivity()
+    {
+        var user = new User(
+            "author",
+            "old-hash",
+            "Original Author",
+            "author@example.test",
+            UserRole.User);
+
+        user.UpdateProfile("Updated Author", "updated@example.test");
+        user.ChangePasswordHash("new-hash");
+
+        Assert.Equal("author", user.Username);
+        Assert.Equal("Updated Author", user.FullName);
+        Assert.Equal("updated@example.test", user.Email);
+        Assert.Equal("new-hash", user.PasswordHash);
+        Assert.Equal(UserRole.User, user.Role);
+        Assert.True(user.IsActive);
+    }
+
+    [Fact]
+    public void PasswordResetToken_CanBeUsedOnlyOnceBeforeExpiry()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var token = new PasswordResetToken(
+            Guid.NewGuid(),
+            new string('A', 64),
+            now.AddMinutes(30),
+            now);
+
+        Assert.True(token.CanBeUsedAt(now.AddMinutes(1)));
+        token.MarkUsed(now.AddMinutes(1));
+
+        Assert.False(token.CanBeUsedAt(now.AddMinutes(2)));
+        Assert.Throws<InvalidOperationException>(() => token.MarkUsed(now.AddMinutes(2)));
+    }
+
     private static Template CreateTemplate(Guid? creator = null)
     {
         return new Template(

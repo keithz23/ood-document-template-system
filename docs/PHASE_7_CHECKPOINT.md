@@ -1,10 +1,10 @@
-# Phase 7A Checkpoint and Phase 6E–6G.1 Follow-up
+# Phase 7A Checkpoint and Phase 6E–6H Follow-up
 
 Date: 2026-10-02
 Status: **implementation verification passed; final Phase 7B pass pending**
 
 Phase 7A was the earlier QA, cleanup, and documentation checkpoint. This update
-records the subsequently approved Phase 6E–6G.1 implementation and its focused
+records the subsequently approved Phase 6E–6H implementation and its focused
 regression evidence. It does not deploy the application, declare it
 feature-complete, or approve a production release. A separate Phase 7B pass is
 still required before any deployment decision.
@@ -12,12 +12,13 @@ still required before any deployment decision.
 ## Scope verified
 
 - registration, JWT login, current-user loading, local logout, `401` handling,
-  fixed permission claims, and Admin/User boundaries
+  profile editing, password change/recovery, fixed permission claims, and
+  Admin/User boundaries
 - active Template gallery, detail, current version, and Placeholders
 - Document creation, edit, placeholder persistence, preview, finalize, history,
   reopen, and HTML download
-- Admin Category, Template, TemplateVersion, Placeholder, User creation and
-  management, and read-only Audit Log screens and APIs
+- Admin Category, Template, TemplateVersion, Placeholder, User creation,
+  identity editing and management, and read-only Audit Log screens and APIs
 - shared Admin TemplateVersion and author Document rich editor, including
   Published/Finalized read-only behavior and server HTML sanitization
 - historical safeguards, Draft/Finalized lifecycle, Published immutability, and
@@ -32,9 +33,9 @@ still required before any deployment decision.
 | `npm run lint` | Passed |
 | `npm run build` | Passed; all App Router routes compiled |
 | `dotnet build DocumentTemplateSystem.sln` | Passed; 0 warnings, 0 errors |
-| Unit tests | 45 passed, 0 failed, 0 skipped |
-| Integration tests | 46 passed, 0 failed, 0 skipped |
-| EF migration verification | Database already up to date |
+| Unit tests | 47 passed, 0 failed, 0 skipped |
+| Integration tests | 58 passed, 0 failed, 0 skipped |
+| EF migration verification | Existing database upgraded and clean temporary database migrated successfully |
 | Browser runtime | No new browser-side error was emitted after the final logout fix |
 | `git diff --check` | Passed |
 
@@ -82,9 +83,20 @@ verified against the live local API.
 
 The Phase 7A mobile findings remain useful, and the implementation retains its
 mobile shell, stacked table alternatives, editor pane switcher, wrapping rich
-editor toolbar, and responsive dialogs. The newly changed flows were not rerun
-in a dedicated device-width browser during this follow-up; that check remains
-required in Phase 7B.
+editor toolbar, and responsive dialogs. Phase 7B must still repeat the full
+device matrix; the focused Phase 6H check below covers only its changed screens.
+
+Phase 6H received an additional focused browser pass on 2026-10-02. Desktop
+verification covered author sign-in, `/profile`, a persisted name/email change,
+immediate shell-identity refresh, local logout, the generic forgot-password
+response, the generated Development reset link, and the Admin user detail/edit
+dialog. The profile and Admin user detail screens were also inspected at a
+390×844 emulated viewport: forms stacked cleanly, the mobile navigation trigger
+remained available, and controls stayed within the viewport. The valid profile
+route emitted no application console errors. Reset consumption and password
+change success/logout are covered by integration tests; browser automation did
+not submit the final password-change action. The deterministic author identity
+and password were restored after verification.
 
 ## Static and data-integrity review
 
@@ -111,10 +123,17 @@ recoverable from the local database, but every target was synthetic and was
 resolved by exact identifier before deletion; deterministic seed data was
 preserved.
 
+The Phase 6H focused browser pass created one reset token and five related
+audit rows while exercising profile, reset, and Admin identity editing. Those
+exact verification-only rows were removed after their identifiers and
+timestamps were inspected; the removal is not recoverable, and deterministic
+seed records were preserved.
+
 ## Known limitations
 
-- Registration and local logout are implemented, but refresh, revocation,
-  recovery, password changes, and profile editing are not.
+- Registration, local logout, profile editing, password changes, and one-time
+  password recovery are implemented. Refresh, access-token revocation,
+  production email delivery, and server-side sessions are not.
 - Rich editing supports the approved HTML subset; there is no file upload,
   collaborative editing, or JSON content editor.
 - Admin-created users receive a required initial password, but there is no
@@ -132,7 +151,8 @@ preserved.
 ## Production risks and prerequisites
 
 The principal risks are browser-local JWT storage, no token revocation, no
-login rate limiting/lockout, no production CSP/security-header policy, a
+login/recovery rate limiting or lockout, development-only reset-link delivery,
+no approved stronger password policy, no production CSP/security-header policy, a
 liveness-only health endpoint, and absent production containers, CI/CD,
 observability, backups, and restore drills. Rich HTML is allowlist-sanitized and
 previewed in a sandboxed iframe, but that does not replace deployment-level CSP
@@ -152,7 +172,7 @@ Revisit these areas when future scope is approved:
 | Future scope | Required documentation/architecture review |
 |---|---|
 | Refresh/revocation/server sessions | auth DTOs/endpoints, token storage, logout semantics, threat model, deployment secrets, diagrams, and tests |
-| Password recovery/change | approved password policy, recovery token lifecycle, Admin boundaries, audit behavior, UX, and tests |
+| Password/auth hardening | stronger password policy, production email adapter, recovery abuse controls/retention, access-token invalidation, threat model, and tests |
 | Custom roles/runtime permissions | domain/persistence model, authorization policies, JWT claims, endpoint matrix, Admin navigation, migration, and tests |
 | Additional content/export formats | DTOs, sanitizer, Composite/rendering/export boundaries, editor/preview parity, and deployment dependencies |
 | Production hardening | CSP/security headers, rate limiting, readiness, real-PostgreSQL tests, automated browser E2E, CI/CD, monitoring, backups, and rollback |

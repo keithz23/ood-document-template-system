@@ -49,6 +49,20 @@ public sealed class AdminUsersController(AdminUserService service) : ControllerB
         Ok(await service.GetUserAsync(userId, cancellationToken));
 
     [Authorize(Policy = Permissions.UsersManage)]
+    [HttpPatch("{userId:guid}")]
+    [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<AdminUserDto>> UpdateUser(
+        Guid userId,
+        UpdateAdminUserRequestDto request,
+        CancellationToken cancellationToken) =>
+        Ok(await service.UpdateUserAsync(userId, request, cancellationToken));
+
+    [Authorize(Policy = Permissions.UsersManage)]
     [HttpPost("{userId:guid}/activate")]
     [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponseDto), StatusCodes.Status400BadRequest)]

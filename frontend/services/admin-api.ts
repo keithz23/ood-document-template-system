@@ -13,6 +13,7 @@ import type {
   CreateTemplateRequestDto,
   PlaceholderDto,
   UpdateCategoryRequestDto,
+  UpdateAdminUserRequestDto,
   UpdateDraftTemplateRequestDto,
   UpdateDraftTemplateVersionRequestDto,
   UpdatePlaceholderRequestDto,
@@ -182,6 +183,17 @@ export async function createAdminUser(request: CreateAdminUserRequestDto) {
 
 export async function getAdminUser(userId: string) {
   const response = await apiClient.get<AdminUserDto>(`/admin/users/${userId}`);
+  return response.data;
+}
+
+export async function updateAdminUser(
+  userId: string,
+  request: UpdateAdminUserRequestDto,
+) {
+  const response = await apiClient.patch<AdminUserDto>(
+    `/admin/users/${userId}`,
+    request,
+  );
   return response.data;
 }
 

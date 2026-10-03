@@ -30,12 +30,17 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAdminCatalogRepository, AdminCatalogRepository>();
         services.AddScoped<IAdminUserRepository, AdminUserRepository>();
+        services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddSingleton<IPasswordHashService, AspNetPasswordHashService>();
         services.AddSingleton<IAccessTokenGenerator, JwtAccessTokenGenerator>();
+        services.AddSingleton<IPasswordResetTokenService, CryptographicPasswordResetTokenService>();
+        services.AddSingleton<IEmailService, DevelopmentEmailService>();
         services.AddScoped<IHtmlContentSanitizer, AllowlistHtmlContentSanitizer>();
         services.AddSingleton(TimeProvider.System);
         services.Configure<JwtOptions>(
             configuration.GetSection(JwtOptions.SectionName));
+        services.Configure<DevelopmentEmailOptions>(
+            configuration.GetSection(DevelopmentEmailOptions.SectionName));
 
         return services;
     }
