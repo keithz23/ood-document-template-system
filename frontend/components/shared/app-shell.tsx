@@ -32,6 +32,10 @@ const navigation = [
   { href: "/documents", label: "My documents", icon: FileClock, permission: "Documents.ViewOwn" },
 ] as const;
 
+const accountNavigation = [
+  { href: "/profile", label: "Profile", icon: UserRound },
+] as const;
+
 const adminNavigation = [
   { href: "/admin/categories", label: "Categories", icon: Tags, permission: "Templates.Manage" },
   { href: "/admin/templates", label: "Manage templates", icon: FolderCog, permission: "Templates.Manage" },
@@ -65,7 +69,7 @@ function Navigation({
   onNavigate?: () => void;
 }) {
   const renderLink = (
-    item: (typeof navigation)[number] | (typeof adminNavigation)[number],
+    item: (typeof navigation)[number] | (typeof adminNavigation)[number] | (typeof accountNavigation)[number],
   ) => {
     const isActive =
       pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -94,6 +98,7 @@ function Navigation({
     <nav aria-label="Primary navigation" className="space-y-5">
       <div className="space-y-1">
         {navigation.filter((item) => hasPermission(item.permission)).map(renderLink)}
+        {accountNavigation.map(renderLink)}
       </div>
       {adminNavigation.some((item) => hasPermission(item.permission)) ? (
         <div className="border-t pt-4">
@@ -132,7 +137,7 @@ function UserIdentity() {
         variant="ghost"
         aria-label="Sign out"
         title="Sign out"
-        onClick={logout}
+        onClick={() => logout()}
       >
         <LogOut aria-hidden="true" />
       </Button>

@@ -219,7 +219,7 @@ export function RichHtmlEditor({
   }
 
   return (
-    <div className="overflow-hidden border bg-white">
+    <div className="overflow-hidden border bg-card">
       {editable ? (
         <div
           role="toolbar"
@@ -386,7 +386,7 @@ export function RichHtmlEditor({
         </div>
       ) : null}
 
-      <div className="bg-slate-100 p-3 sm:p-5">
+      <div className="bg-muted p-3 sm:p-5">
         <EditorContent
           editor={editor}
           className={cn(

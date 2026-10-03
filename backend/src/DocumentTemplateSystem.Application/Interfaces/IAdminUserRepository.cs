@@ -15,11 +15,13 @@ public interface IAdminUserRepository
 
     Task<bool> UsernameExistsAsync(
         string username,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Guid? excludingUserId = null);
 
     Task<bool> EmailExistsAsync(
         string email,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Guid? excludingUserId = null);
 
     Task<IReadOnlyList<AdminAuditLogEntry>> GetAuditLogsAsync(
         CancellationToken cancellationToken = default);

@@ -36,8 +36,17 @@ public sealed class UserRepository(AppDbContext context) : IUserRepository
     public Task AddAsync(User user, CancellationToken cancellationToken = default) =>
         context.Users.AddAsync(user, cancellationToken).AsTask();
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
-        context.SaveChangesAsync(cancellationToken);
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception)
+        {
+            throw PersistenceConflictTranslator.Translate(exception);
+        }
+    }
 
     private static async Task<User?> FindSingleMatchAsync(
         AppDbContext context,

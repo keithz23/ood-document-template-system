@@ -60,6 +60,13 @@ abstractions must remain understandable and presentation-ready.
   and `User`.
 - Public registration creates an active `User`; logout clears the browser JWT,
   identity, and authenticated query cache.
+- Authenticated users can update their full name and unique email, and can
+  change their password after verifying the current password. Username remains
+  immutable through self-service.
+- Password recovery uses a short-lived, one-time opaque token. Only its hash is
+  persisted; unknown and inactive accounts receive the same public response.
+- Administrators with `Users.Manage` can edit a user's username, full name, and
+  email without changing password, role, or activation state in that action.
 - A fixed code-defined permission matrix determines API policies and visible
   navigation. Custom roles and runtime permission management are not supported.
 - Only active templates with a published current version can create documents.
@@ -102,11 +109,12 @@ TipTap formatting surface, while Published versions and Finalized Documents are
 read-only. API authorization uses the fixed permission matrix returned with the
 authenticated user.
 
-The Phase 6E–6G.1 implementation is complete and ready for a separately scoped
-Phase 7B QA/deployment-readiness pass. This is not a production release or
-feature-complete declaration. Refresh/revocation, password recovery, custom
-permissions, additional export formats, and production operations remain
-outside this checkpoint.
+The Phase 6E–6H implementation and Phase 7B QA/deployment-readiness checkpoint
+are complete. This is not a production release or feature-complete declaration.
+The current scope is suitable for a local academic demonstration. Refresh and
+revocation, production email delivery, an approved stronger password policy,
+custom permissions, additional export formats, automated browser E2E coverage,
+and production operations remain outside this checkpoint.
 
 ## Evidence on Hand
 

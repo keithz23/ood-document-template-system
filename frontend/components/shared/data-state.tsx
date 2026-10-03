@@ -76,7 +76,7 @@ export function ErrorState({
       role="alert"
       className="flex min-h-80 flex-col items-center justify-center rounded-xl border bg-card px-6 py-12 text-center"
     >
-      <div className="flex size-10 items-center justify-center rounded-lg bg-red-50 text-red-700">
+      <div className="flex size-10 items-center justify-center rounded-lg bg-destructive-subtle text-destructive">
         <AlertCircle aria-hidden="true" className="size-5" />
       </div>
       <h2 className="mt-4 text-base font-semibold">{title}</h2>

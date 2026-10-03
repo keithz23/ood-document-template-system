@@ -103,6 +103,75 @@ public sealed class AdminUserService(
         return MapUser(user);
     }
 
+    public async Task<AdminUserDto> UpdateUserAsync(
+        Guid userId,
+        UpdateAdminUserRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureIdentifier(userId, "userId");
+        ArgumentNullException.ThrowIfNull(request);
+
+        var username = request.Username?.Trim() ?? string.Empty;
+        var fullName = request.FullName?.Trim() ?? string.Empty;
+        var email = request.Email?.Trim() ?? string.Empty;
+        var errors = new List<ValidationErrorDto>();
+        AddRequiredError(errors, "username", username);
+        AddRequiredError(errors, "fullName", fullName);
+        AddRequiredError(errors, "email", email);
+
+        if (email.Length > 0 && !MailAddress.TryCreate(email, out _))
+        {
+            errors.Add(new ValidationErrorDto(
+                "email",
+                "INVALID_EMAIL",
+                "Email must be a valid email address."));
+        }
+
+        if (errors.Count > 0)
+        {
+            throw UseCaseException.Validation([.. errors]);
+        }
+
+        var user = await GetUserEntityAsync(userId, cancellationToken);
+        if (await repository.UsernameExistsAsync(
+                username,
+                cancellationToken,
+                excludingUserId: userId))
+        {
+            throw UseCaseException.Conflict(
+                "USERNAME_ALREADY_EXISTS",
+                "That username is already in use.");
+        }
+
+        if (await repository.EmailExistsAsync(
+                email,
+                cancellationToken,
+                excludingUserId: userId))
+        {
+            throw UseCaseException.Conflict(
+                "EMAIL_ALREADY_EXISTS",
+                "That email address is already in use.");
+        }
+
+        if (user.Username == username
+            && user.FullName == fullName
+            && user.Email == email)
+        {
+            return MapUser(user);
+        }
+
+        var previousUsername = user.Username;
+        user.UpdateIdentity(username, fullName, email);
+        repository.AddAuditLog(new AuditLog(
+            currentUser.UserId,
+            "AdminEditUser",
+            nameof(User),
+            user.Id,
+            $"Updated identity details for user '{previousUsername}'."));
+        await repository.SaveChangesAsync(cancellationToken);
+        return MapUser(user);
+    }
+
     public Task<AdminUserDto> ActivateUserAsync(
         Guid userId,
         CancellationToken cancellationToken = default) =>

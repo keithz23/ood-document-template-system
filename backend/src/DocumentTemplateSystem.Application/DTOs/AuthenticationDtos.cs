@@ -10,6 +10,16 @@ public sealed record RegisterRequestDto(
     string Email,
     string Password);
 
+public sealed record ForgotPasswordRequestDto(string Email);
+
+public sealed record ForgotPasswordResponseDto(string Message);
+
+public sealed record ResetPasswordRequestDto(string Token, string NewPassword);
+
+public sealed record UpdateOwnProfileRequestDto(string FullName, string Email);
+
+public sealed record ChangePasswordRequestDto(string CurrentPassword, string NewPassword);
+
 public sealed record UserDto(
     Guid Id,
     string Username,

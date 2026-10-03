@@ -246,7 +246,9 @@ when a list or table better supports scanning and comparison.
 
 ### Navigation structure
 
-- The primary user group contains **Templates** and **My documents**.
+- The primary user group contains **Templates**, **My documents**, and
+  **Profile**. Profile contains self-service name/email editing and password
+  change; username is visibly read-only.
 - Admin-only navigation is visually separated and contains **Categories**,
   **Templates**, **Users**, and **Audit logs**. Template versions and
   placeholders live inside template detail rather than becoming permanent
@@ -255,8 +257,9 @@ when a list or table better supports scanning and comparison.
   narrow leading indicator. Hover alone must not resemble the active state.
 - Breadcrumbs communicate resource hierarchy on detail and editor screens; they
   do not repeat a single top-level page name.
-- The shell may display the signed-in user's identity and role. Additional
-  account-management features are not implied by this design document.
+- The shell displays the signed-in user's identity and role. Public sign-in,
+  registration, forgot-password, and reset-password routes use the same compact
+  authentication surface rather than the workspace shell.
 
 ### Responsive behavior
 
@@ -360,6 +363,9 @@ must not redefine foundational colors, radii, control heights, or focus styles.
   primary; its key and data type are secondary metadata.
 - Finalized documents use read-only presentation, not a forest of disabled
   inputs. Explain the finalized state once in a persistent banner.
+- Password confirmation is a client-only field. Password-change success signs
+  the user out with a clear sign-in notice; recovery always uses generic public
+  copy that does not reveal whether an account exists or is active.
 
 ### Tables
 

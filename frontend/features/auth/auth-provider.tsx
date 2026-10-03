@@ -19,14 +19,15 @@ import {
   unauthorizedEventName,
 } from "@/features/auth/auth-storage";
 import { getCurrentUser } from "@/services/auth-api";
-import type { Permission } from "@/types/api";
+import type { Permission, UserDto } from "@/types/api";
 
 type AuthContextValue = Readonly<{
   session: AuthSession | null;
   isReady: boolean;
   establishSession: (session: AuthSession) => void;
   clearSession: () => void;
-  logout: () => void;
+  updateCurrentUser: (user: UserDto) => void;
+  logout: (destination?: string) => void;
   hasPermission: (permission: Permission) => boolean;
 }>;
 
@@ -65,10 +66,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, [queryClient]);
 
-  const logout = useCallback(() => {
+  const updateCurrentUser = useCallback((user: UserDto) => {
+    setSession((current) => {
+      if (!current) return current;
+      const nextSession = { ...current, user };
+      storeSession(nextSession);
+      return nextSession;
+    });
+    queryClient.setQueryData(["auth", "me"], user);
+  }, [queryClient]);
+
+  const logout = useCallback((destination = "/login") => {
     clearStoredSession();
     queryClient.clear();
-    window.location.replace("/login");
+    window.location.replace(destination);
   }, [queryClient]);
 
   useEffect(() => {
@@ -99,10 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isReady,
       establishSession,
       clearSession,
+      updateCurrentUser,
       logout,
       hasPermission,
     }),
-    [clearSession, effectiveSession, establishSession, hasPermission, isReady, logout],
+    [clearSession, effectiveSession, establishSession, hasPermission, isReady, logout, updateCurrentUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

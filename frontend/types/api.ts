@@ -35,6 +35,21 @@ export type RegisterRequestDto = Readonly<{
   password: string;
 }>;
 
+export type ForgotPasswordRequestDto = Readonly<{ email: string }>;
+export type ForgotPasswordResponseDto = Readonly<{ message: string }>;
+export type ResetPasswordRequestDto = Readonly<{
+  token: string;
+  newPassword: string;
+}>;
+export type UpdateOwnProfileRequestDto = Readonly<{
+  fullName: string;
+  email: string;
+}>;
+export type ChangePasswordRequestDto = Readonly<{
+  currentPassword: string;
+  newPassword: string;
+}>;
+
 export type LoginResponseDto = Readonly<{
   accessToken: string;
   tokenType: "Bearer";
@@ -275,6 +290,12 @@ export type AdminUserDto = Readonly<{
 
 export type UpdateUserRoleRequestDto = Readonly<{
   role: UserRole;
+}>;
+
+export type UpdateAdminUserRequestDto = Readonly<{
+  username: string;
+  fullName: string;
+  email: string;
 }>;
 
 export type CreateAdminUserRequestDto = Readonly<{

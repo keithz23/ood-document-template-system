@@ -134,10 +134,14 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             await client.GetStringAsync("/swagger/v1/swagger.json"));
         var paths = document.RootElement.GetProperty("paths");
 
-        Assert.Equal(32, paths.EnumerateObject().Count());
+        Assert.Equal(36, paths.EnumerateObject().Count());
         Assert.True(paths.TryGetProperty("/api/auth/login", out var loginPath));
         Assert.True(paths.TryGetProperty("/api/auth/register", out var registerPath));
+        Assert.True(paths.TryGetProperty("/api/auth/forgot-password", out var forgotPath));
+        Assert.True(paths.TryGetProperty("/api/auth/reset-password", out var resetPath));
         Assert.True(paths.TryGetProperty("/api/auth/me", out _));
+        Assert.True(paths.TryGetProperty("/api/users/me", out _));
+        Assert.True(paths.TryGetProperty("/api/users/me/change-password", out _));
         Assert.True(paths.TryGetProperty("/api/templates", out _));
         Assert.True(paths.TryGetProperty("/api/templates/{templateId}", out _));
         Assert.True(paths.TryGetProperty(
@@ -198,6 +202,8 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
         Assert.Empty(loginPath.GetProperty("post").GetProperty("security").EnumerateArray());
         Assert.Empty(registerPath.GetProperty("post").GetProperty("security").EnumerateArray());
+        Assert.Empty(forgotPath.GetProperty("post").GetProperty("security").EnumerateArray());
+        Assert.Empty(resetPath.GetProperty("post").GetProperty("security").EnumerateArray());
     }
 
     [Fact]
@@ -334,7 +340,9 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
             Content = JsonContent.Create(
                 new UpdateDraftDocumentRequestDto(
                     null,
-                    "<h1>Safe</h1><script>alert('unsafe')</script><p onclick=\"alert(1)\">Body</p>",
+                    "<h1>Safe</h1><script>alert('unsafe')</script><p onclick=\"alert(1)\">Body</p>"
+                    + "<img src=\"javascript:alert(1)\"><img src=\"data:image/png;base64,AAAA\">"
+                    + "<img src=\"/relative.png\"><img src=\"https://images.example.test/safe.png\" alt=\"Safe\">",
                     null),
                 options: JsonOptions)
         };
@@ -345,10 +353,18 @@ public sealed class AuthoringApiTests : IClassFixture<AuthoringApiFactory>
         Assert.Contains("<h1>Safe</h1>", updated?.Content);
         Assert.DoesNotContain("<script", updated?.Content, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("onclick", updated?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("javascript:", updated?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("data:image", updated?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/relative.png", updated?.Content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("https://images.example.test/safe.png", updated?.Content);
 
         var download = await client.GetStringAsync($"/api/documents/{document.Id}/download");
         Assert.DoesNotContain("<script", download, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("onclick", download, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("javascript:", download, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("data:image", download, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/relative.png", download, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("https://images.example.test/safe.png", download);
     }
 
     [Fact]

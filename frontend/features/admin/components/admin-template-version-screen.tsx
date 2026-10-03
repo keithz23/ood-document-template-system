@@ -313,7 +313,7 @@ export function AdminTemplateVersionScreen({
             />
           </div>
           {contentMode === "preview" ? (
-            <div className="bg-slate-100 p-3 sm:p-5">
+            <div className="bg-muted p-3 sm:p-5">
               <iframe
                 title="Template preview"
                 sandbox=""

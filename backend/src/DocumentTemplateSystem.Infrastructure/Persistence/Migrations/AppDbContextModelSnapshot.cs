@@ -137,7 +137,6 @@ namespace DocumentTemplateSystem.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("DocumentTemplateSystem.Domain.Entities.DocumentPlaceholderValue", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("DataTypeSnapshot")
@@ -169,6 +168,41 @@ namespace DocumentTemplateSystem.Infrastructure.Persistence.Migrations
                     b.HasIndex("PlaceholderId");
 
                     b.ToTable("DocumentPlaceholderValues", (string)null);
+                });
+
+            modelBuilder.Entity("DocumentTemplateSystem.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PasswordResetTokens", (string)null);
                 });
 
             modelBuilder.Entity("DocumentTemplateSystem.Domain.Entities.Placeholder", b =>
@@ -403,6 +437,15 @@ namespace DocumentTemplateSystem.Infrastructure.Persistence.Migrations
                     b.Navigation("Document");
 
                     b.Navigation("Placeholder");
+                });
+
+            modelBuilder.Entity("DocumentTemplateSystem.Domain.Entities.PasswordResetToken", b =>
+                {
+                    b.HasOne("DocumentTemplateSystem.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DocumentTemplateSystem.Domain.Entities.Placeholder", b =>

@@ -36,6 +36,8 @@ export function LoginForm() {
   const returnTo = safeReturnTo(searchParams.get("returnTo"));
   const sessionExpired = searchParams.get("reason") === "session-expired";
   const registered = searchParams.get("registered") === "1";
+  const passwordChanged = searchParams.get("passwordChanged") === "1";
+  const passwordReset = searchParams.get("passwordReset") === "1";
   const {
     register,
     handleSubmit,
@@ -92,6 +94,14 @@ export function LoginForm() {
               <CheckCircle2 aria-hidden="true" />
               <AlertTitle>Account created</AlertTitle>
               <AlertDescription>Sign in with your new username or email.</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {passwordChanged || passwordReset ? (
+            <Alert className="mt-5" role="status">
+              <CheckCircle2 aria-hidden="true" />
+              <AlertTitle>Password updated</AlertTitle>
+              <AlertDescription>Sign in with your new password.</AlertDescription>
             </Alert>
           ) : null}
 
@@ -157,6 +167,11 @@ export function LoginForm() {
             Need an account?{" "}
             <Link href="/register" className="font-medium text-foreground underline underline-offset-4">
               Create one
+            </Link>
+          </p>
+          <p className="mt-3 text-center text-sm">
+            <Link href="/forgot-password" className="font-medium text-foreground underline underline-offset-4">
+              Forgot your password?
             </Link>
           </p>
         </section>

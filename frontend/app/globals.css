@@ -27,6 +27,13 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-information: var(--information);
+  --color-information-subtle: var(--information-subtle);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -64,6 +71,13 @@
   --accent: oklch(0.945 0.017 250);
   --accent-foreground: oklch(0.28 0.04 255);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-subtle: oklch(0.971 0.013 17.38);
+  --information: oklch(0.488 0.243 264.376);
+  --information-subtle: oklch(0.97 0.014 254.604);
+  --success: oklch(0.448 0.119 151.328);
+  --success-subtle: oklch(0.982 0.018 155.826);
+  --warning: oklch(0.473 0.137 46.201);
+  --warning-subtle: oklch(0.987 0.022 95.277);
   --border: oklch(0.89 0.012 250);
   --input: oklch(0.84 0.018 250);
   --ring: oklch(0.55 0.16 253);
@@ -157,9 +171,9 @@
 @layer components {
   .rich-html-editor .ProseMirror {
     min-height: 680px;
-    background: white;
+    background: var(--card);
     padding: 3rem 4rem;
-    color: #1f2937;
+    color: var(--foreground);
     font-family: Georgia, "Times New Roman", serif;
     font-size: 15px;
     line-height: 1.75;
@@ -180,7 +194,7 @@
   .rich-html-editor .ProseMirror h2,
   .rich-html-editor .ProseMirror h3 {
     margin: 1.4em 0 0.55em;
-    color: #111827;
+    color: var(--foreground);
     font-family: Arial, Helvetica, sans-serif;
     line-height: 1.2;
   }
@@ -221,9 +235,9 @@
 
   .rich-html-editor .ProseMirror blockquote {
     margin: 1rem 0;
-    border-left: 1px solid #94a3b8;
+    border-left: 1px solid var(--input);
     padding-left: 1rem;
-    color: #475569;
+    color: var(--muted-foreground);
   }
 
   .rich-html-editor .ProseMirror .tableWrapper {
@@ -241,13 +255,13 @@
   .rich-html-editor .ProseMirror td {
     position: relative;
     min-width: 5rem;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--border);
     padding: 0.55rem 0.65rem;
     vertical-align: top;
   }
 
   .rich-html-editor .ProseMirror th {
-    background: #f1f5f9;
+    background: var(--muted);
     font-family: Arial, Helvetica, sans-serif;
     font-weight: 600;
   }

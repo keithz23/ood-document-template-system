@@ -21,6 +21,7 @@ import {
   setTemplateActive,
   setUserActive,
   updateAdminPlaceholder,
+  updateAdminUser,
   updateCategory,
   updateDraftTemplate,
   updateDraftTemplateVersion,
@@ -32,6 +33,7 @@ import type {
   CreatePlaceholderRequestDto,
   CreateTemplateRequestDto,
   UpdateCategoryRequestDto,
+  UpdateAdminUserRequestDto,
   UpdateDraftTemplateRequestDto,
   UpdateDraftTemplateVersionRequestDto,
   UpdatePlaceholderRequestDto,
@@ -259,6 +261,19 @@ export function useAdminUser(userId: string) {
     queryKey: adminKeys.user(userId),
     queryFn: () => getAdminUser(userId),
     enabled: Boolean(userId),
+  });
+}
+
+export function useUpdateAdminUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: UpdateAdminUserRequestDto }) =>
+      updateAdminUser(id, request),
+    onSuccess: (data) => {
+      queryClient.setQueryData(adminKeys.user(data.id), data);
+      queryClient.invalidateQueries({ queryKey: adminKeys.users });
+      queryClient.invalidateQueries({ queryKey: adminKeys.auditLogs });
+    },
   });
 }
 

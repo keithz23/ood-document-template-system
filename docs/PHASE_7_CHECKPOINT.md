@@ -1,23 +1,26 @@
-# Phase 7A Checkpoint and Phase 6E–6G.1 Follow-up
+# Phase 7A Checkpoint and Phase 6E–6H Follow-up
 
 Date: 2026-10-02
-Status: **implementation verification passed; final Phase 7B pass pending**
+Status: **superseded by the completed Phase 7B readiness checkpoint**
 
 Phase 7A was the earlier QA, cleanup, and documentation checkpoint. This update
-records the subsequently approved Phase 6E–6G.1 implementation and its focused
+records the subsequently approved Phase 6E–6H implementation and its focused
 regression evidence. It does not deploy the application, declare it
-feature-complete, or approve a production release. A separate Phase 7B pass is
-still required before any deployment decision.
+feature-complete, or approve a production release. A separate Phase 7B pass
+was subsequently completed. See `docs/PHASE_7B_READINESS.md` for the current
+evidence and deployment-readiness verdict. Neither checkpoint deploys the
+application or approves a public production release.
 
 ## Scope verified
 
 - registration, JWT login, current-user loading, local logout, `401` handling,
-  fixed permission claims, and Admin/User boundaries
+  profile editing, password change/recovery, fixed permission claims, and
+  Admin/User boundaries
 - active Template gallery, detail, current version, and Placeholders
 - Document creation, edit, placeholder persistence, preview, finalize, history,
   reopen, and HTML download
-- Admin Category, Template, TemplateVersion, Placeholder, User creation and
-  management, and read-only Audit Log screens and APIs
+- Admin Category, Template, TemplateVersion, Placeholder, User creation,
+  identity editing and management, and read-only Audit Log screens and APIs
 - shared Admin TemplateVersion and author Document rich editor, including
   Published/Finalized read-only behavior and server HTML sanitization
 - historical safeguards, Draft/Finalized lifecycle, Published immutability, and
@@ -32,9 +35,9 @@ still required before any deployment decision.
 | `npm run lint` | Passed |
 | `npm run build` | Passed; all App Router routes compiled |
 | `dotnet build DocumentTemplateSystem.sln` | Passed; 0 warnings, 0 errors |
-| Unit tests | 45 passed, 0 failed, 0 skipped |
-| Integration tests | 46 passed, 0 failed, 0 skipped |
-| EF migration verification | Database already up to date |
+| Unit tests | 47 passed, 0 failed, 0 skipped |
+| Integration tests | 58 passed, 0 failed, 0 skipped |
+| EF migration verification | Existing database upgraded and clean temporary database migrated successfully |
 | Browser runtime | No new browser-side error was emitted after the final logout fix |
 | `git diff --check` | Passed |
 
@@ -47,8 +50,8 @@ a source compilation failure.
 The Impeccable static detector reported only the two uses of Arial in global
 styles. Arial is the explicitly approved body family in `DESIGN.md`, so these
 were retained. The shared editor and new forms were also reviewed against the
-existing responsive and accessibility conventions. A fresh device-width
-browser pass remains an explicit Phase 7B item.
+existing responsive and accessibility conventions. The fresh device-width
+browser pass was subsequently completed in Phase 7B.
 
 ## Browser regression evidence
 
@@ -82,9 +85,20 @@ verified against the live local API.
 
 The Phase 7A mobile findings remain useful, and the implementation retains its
 mobile shell, stacked table alternatives, editor pane switcher, wrapping rich
-editor toolbar, and responsive dialogs. The newly changed flows were not rerun
-in a dedicated device-width browser during this follow-up; that check remains
-required in Phase 7B.
+editor toolbar, and responsive dialogs. Phase 7B subsequently repeated the full
+device matrix; the focused Phase 6H evidence below remains historical context.
+
+Phase 6H received an additional focused browser pass on 2026-10-02. Desktop
+verification covered author sign-in, `/profile`, a persisted name/email change,
+immediate shell-identity refresh, local logout, the generic forgot-password
+response, the generated Development reset link, and the Admin user detail/edit
+dialog. The profile and Admin user detail screens were also inspected at a
+390×844 emulated viewport: forms stacked cleanly, the mobile navigation trigger
+remained available, and controls stayed within the viewport. The valid profile
+route emitted no application console errors. Reset consumption and password
+change success/logout are covered by integration tests; browser automation did
+not submit the final password-change action. The deterministic author identity
+and password were restored after verification.
 
 ## Static and data-integrity review
 
@@ -111,10 +125,17 @@ recoverable from the local database, but every target was synthetic and was
 resolved by exact identifier before deletion; deterministic seed data was
 preserved.
 
+The Phase 6H focused browser pass created one reset token and five related
+audit rows while exercising profile, reset, and Admin identity editing. Those
+exact verification-only rows were removed after their identifiers and
+timestamps were inspected; the removal is not recoverable, and deterministic
+seed records were preserved.
+
 ## Known limitations
 
-- Registration and local logout are implemented, but refresh, revocation,
-  recovery, password changes, and profile editing are not.
+- Registration, local logout, profile editing, password changes, and one-time
+  password recovery are implemented. Refresh, access-token revocation,
+  production email delivery, and server-side sessions are not.
 - Rich editing supports the approved HTML subset; there is no file upload,
   collaborative editing, or JSON content editor.
 - Admin-created users receive a required initial password, but there is no
@@ -131,13 +152,14 @@ preserved.
 
 ## Production risks and prerequisites
 
-The principal risks are browser-local JWT storage, no token revocation, no
-login rate limiting/lockout, no production CSP/security-header policy, a
-liveness-only health endpoint, and absent production containers, CI/CD,
-observability, backups, and restore drills. Rich HTML is allowlist-sanitized and
-previewed in a sandboxed iframe, but that does not replace deployment-level CSP
-or downloaded-file threat review. Development credentials, seeding, and the
-local JWT key must never be used outside a local demo.
+This Phase 7A risk list has been superseded by the detailed Phase 7B assessment.
+Phase 7B added baseline public-auth rate limiting, API security headers, stricter
+image-source sanitization, and separate database readiness. Remaining principal
+risks include browser-local JWT storage, no token revocation or lockout,
+development-only reset-link delivery, no approved stronger password policy,
+process-local rather than distributed limiting, and absent production
+containers, CI/CD, observability, backups, and restore drills. See
+`docs/PHASE_7B_READINESS.md` and `docs/DEPLOYMENT.md` for the current list.
 
 Before a future deployment, provision and back up PostgreSQL, provide external
 secrets, disable seeding, apply migrations explicitly, deploy and smoke-test the
@@ -152,19 +174,19 @@ Revisit these areas when future scope is approved:
 | Future scope | Required documentation/architecture review |
 |---|---|
 | Refresh/revocation/server sessions | auth DTOs/endpoints, token storage, logout semantics, threat model, deployment secrets, diagrams, and tests |
-| Password recovery/change | approved password policy, recovery token lifecycle, Admin boundaries, audit behavior, UX, and tests |
+| Password/auth hardening | stronger password policy, production email adapter, recovery abuse controls/retention, access-token invalidation, threat model, and tests |
 | Custom roles/runtime permissions | domain/persistence model, authorization policies, JWT claims, endpoint matrix, Admin navigation, migration, and tests |
 | Additional content/export formats | DTOs, sanitizer, Composite/rendering/export boundaries, editor/preview parity, and deployment dependencies |
-| Production hardening | CSP/security headers, rate limiting, readiness, real-PostgreSQL tests, automated browser E2E, CI/CD, monitoring, backups, and rollback |
+| Production hardening | distributed/edge abuse controls, proxy/header review, automated browser E2E, CI/CD, monitoring, backups, and rollback |
 
 `AGENTS.md`, `docs/API_CONTRACT.md`, `docs/ARCHITECTURE.md`,
 `docs/DEPLOYMENT.md`, and this report must be updated together when those
 decisions become approved implementation scope.
 
-## Phase 7B readiness
+## Phase 7B follow-up
 
-The implementation is ready to enter Phase 7B. That pass must rerun the full
-desktop and device-width browser matrix, perform a dedicated console/network
-inspection, repeat clean-database migration verification, and make the final
-deployment-readiness decision. Readiness to begin Phase 7B is not production
-approval.
+Phase 7B reran the desktop and device-width browser matrix, performed a focused
+console inspection, repeated migration verification against both an existing
+database and a clean temporary database, and recorded the final checkpoint
+decision in `docs/PHASE_7B_READINESS.md`. That result is readiness evidence for
+the current academic/demo scope, not production approval.

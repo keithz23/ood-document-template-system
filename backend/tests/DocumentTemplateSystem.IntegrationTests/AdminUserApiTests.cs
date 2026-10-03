@@ -143,6 +143,65 @@ public sealed class AdminUserApiTests
     }
 
     [Fact]
+    public async Task Admin_CanEditUserIdentityAndCreatesAuditLog()
+    {
+        await using var factory = new AdminUserApiFactory();
+        using var client = CreateClient(
+            factory,
+            TestAuthenticationHandler.AdminAuthenticationScheme,
+            factory.Admin.Id);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/admin/users/{factory.Author.Id}")
+        {
+            Content = JsonContent.Create(
+                new UpdateAdminUserRequestDto(
+                    "updated.author",
+                    "Updated Author",
+                    "updated.author@example.test"),
+                options: JsonOptions)
+        };
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("updated.author", factory.Author.Username);
+        Assert.Equal("Updated Author", factory.Author.FullName);
+        Assert.Equal("updated.author@example.test", factory.Author.Email);
+        Assert.Single(factory.Repository.AuditLogs, log =>
+            log.ActionType == "AdminEditUser" && log.EntityId == factory.Author.Id);
+    }
+
+    [Theory]
+    [InlineData("admin", "unique@example.test", "USERNAME_ALREADY_EXISTS")]
+    [InlineData("unique", "admin@example.test", "EMAIL_ALREADY_EXISTS")]
+    public async Task AdminEdit_WithDuplicateIdentity_ReturnsConflict(
+        string username,
+        string email,
+        string expectedCode)
+    {
+        await using var factory = new AdminUserApiFactory();
+        using var client = CreateClient(
+            factory,
+            TestAuthenticationHandler.AdminAuthenticationScheme,
+            factory.Admin.Id);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/admin/users/{factory.Author.Id}")
+        {
+            Content = JsonContent.Create(
+                new UpdateAdminUserRequestDto(username, "Updated Author", email),
+                options: JsonOptions)
+        };
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponseDto>(JsonOptions);
+        Assert.Equal(expectedCode, error?.Code);
+    }
+
+    [Fact]
     public async Task Admin_CannotDeactivateSelfOrChangeOwnRole()
     {
         await using var factory = new AdminUserApiFactory();
@@ -205,6 +264,7 @@ public sealed class AdminUserApiTests
     [InlineData("GET", "/api/admin/users")]
     [InlineData("POST", "/api/admin/users")]
     [InlineData("GET", "/api/admin/users/{authorId}")]
+    [InlineData("PATCH", "/api/admin/users/{authorId}")]
     [InlineData("POST", "/api/admin/users/{authorId}/activate")]
     [InlineData("POST", "/api/admin/users/{authorId}/deactivate")]
     [InlineData("PATCH", "/api/admin/users/{authorId}/role")]
@@ -223,9 +283,16 @@ public sealed class AdminUserApiTests
             path.Replace("{authorId}", factory.Author.Id.ToString()));
         if (method == "PATCH")
         {
-            request.Content = JsonContent.Create(
-                new UpdateUserRoleRequestDto(UserRole.Admin),
-                options: JsonOptions);
+            request.Content = path.EndsWith("/role", StringComparison.Ordinal)
+                ? JsonContent.Create(
+                    new UpdateUserRoleRequestDto(UserRole.Admin),
+                    options: JsonOptions)
+                : JsonContent.Create(
+                    new UpdateAdminUserRequestDto(
+                        "forbidden.edit",
+                        "Forbidden Edit",
+                        "forbidden.edit@example.test"),
+                    options: JsonOptions);
         }
         else if (method == "POST" && path == "/api/admin/users")
         {
@@ -371,12 +438,26 @@ public sealed class InMemoryAdminUserRepository(IReadOnlyList<User> seedUsers)
 
     public Task<bool> UsernameExistsAsync(
         string username,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult(Users.Any(user => user.Username == username));
+        CancellationToken cancellationToken = default,
+        Guid? excludingUserId = null) =>
+        Task.FromResult(Users.Any(user =>
+            user.Username == username && user.Id != excludingUserId));
 
     public Task<bool> EmailExistsAsync(
         string email,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default,
+        Guid? excludingUserId = null) =>
+        Task.FromResult(Users.Any(user =>
+            user.Email == email && user.Id != excludingUserId));
+
+    Task<bool> IUserRepository.UsernameExistsAsync(
+        string username,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(Users.Any(user => user.Username == username));
+
+    Task<bool> IUserRepository.EmailExistsAsync(
+        string email,
+        CancellationToken cancellationToken) =>
         Task.FromResult(Users.Any(user => user.Email == email));
 
     public Task AddAsync(User user, CancellationToken cancellationToken = default)

@@ -23,6 +23,7 @@ import {
   useUpdateUserRole,
 } from "@/features/admin/api/admin-queries";
 import { AdminStatusBadge } from "@/features/admin/components/admin-status-badge";
+import { EditAdminUserDialog } from "@/features/admin/components/edit-admin-user-dialog";
 import { useAuth } from "@/features/auth/auth-provider";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/services/api-errors";
@@ -121,7 +122,7 @@ export function AdminUserDetailScreen({ userId }: { userId: string }) {
             <div>
               <h2 id="identity-heading" className="text-base font-semibold">Account details</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Identity fields are read-only in this phase.
+                Identity details used throughout the workspace.
               </p>
             </div>
           </div>
@@ -156,6 +157,14 @@ export function AdminUserDetailScreen({ userId }: { userId: string }) {
               </dd>
             </div>
           </dl>
+          {canManageUsers ? (
+            <div className="mt-6 border-t pt-5">
+              <EditAdminUserDialog
+                user={user}
+                onSaved={(updated) => setSuccessMessage(`${updated.fullName}’s identity details were updated.`)}
+              />
+            </div>
+          ) : null}
         </section>
 
         <section aria-labelledby="access-heading" className="rounded-xl border bg-card p-5 sm:p-6">

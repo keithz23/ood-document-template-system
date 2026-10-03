@@ -23,13 +23,21 @@ public sealed class AdminUserRepository(AppDbContext context) : IAdminUserReposi
 
     public Task<bool> UsernameExistsAsync(
         string username,
-        CancellationToken cancellationToken = default) =>
-        context.Users.AnyAsync(user => user.Username == username, cancellationToken);
+        CancellationToken cancellationToken = default,
+        Guid? excludingUserId = null) =>
+        context.Users.AnyAsync(
+            user => user.Username == username
+                && (!excludingUserId.HasValue || user.Id != excludingUserId.Value),
+            cancellationToken);
 
     public Task<bool> EmailExistsAsync(
         string email,
-        CancellationToken cancellationToken = default) =>
-        context.Users.AnyAsync(user => user.Email == email, cancellationToken);
+        CancellationToken cancellationToken = default,
+        Guid? excludingUserId = null) =>
+        context.Users.AnyAsync(
+            user => user.Email == email
+                && (!excludingUserId.HasValue || user.Id != excludingUserId.Value),
+            cancellationToken);
 
     public async Task<IReadOnlyList<AdminAuditLogEntry>> GetAuditLogsAsync(
         CancellationToken cancellationToken = default)
@@ -51,6 +59,15 @@ public sealed class AdminUserRepository(AppDbContext context) : IAdminUserReposi
 
     public void AddUser(User user) => context.Users.Add(user);
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
-        context.SaveChangesAsync(cancellationToken);
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception)
+        {
+            throw PersistenceConflictTranslator.Translate(exception);
+        }
+    }
 }

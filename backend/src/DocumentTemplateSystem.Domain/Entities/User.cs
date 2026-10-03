@@ -75,4 +75,41 @@ public sealed class User
 
         Role = role;
     }
+
+    public void UpdateIdentity(string username, string fullName, string email)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            throw new ArgumentException("Username is required.", nameof(username));
+        }
+
+        Username = username.Trim();
+        UpdateProfile(fullName, email);
+    }
+
+    public void UpdateProfile(string fullName, string email)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            throw new ArgumentException("Full name is required.", nameof(fullName));
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new ArgumentException("Email is required.", nameof(email));
+        }
+
+        FullName = fullName.Trim();
+        Email = email.Trim();
+    }
+
+    public void ChangePasswordHash(string passwordHash)
+    {
+        if (string.IsNullOrWhiteSpace(passwordHash))
+        {
+            throw new ArgumentException("Password hash is required.", nameof(passwordHash));
+        }
+
+        PasswordHash = passwordHash;
+    }
 }

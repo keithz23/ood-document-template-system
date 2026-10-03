@@ -1,4 +1,5 @@
 using DocumentTemplateSystem.Application.Interfaces;
+using AngleSharp.Dom;
 using Ganss.Xss;
 
 namespace DocumentTemplateSystem.Infrastructure.Rendering;
@@ -37,6 +38,21 @@ public sealed class AllowlistHtmlContentSanitizer : IHtmlContentSanitizer
         sanitizer.AllowedCssProperties.UnionWith(["text-align", "width", "min-width"]);
         sanitizer.AllowedSchemes.Clear();
         sanitizer.AllowedSchemes.UnionWith(["http", "https", "mailto"]);
+        sanitizer.PostProcessNode += (_, args) =>
+        {
+            if (args.Node is not IElement element
+                || !string.Equals(element.LocalName, "img", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var source = element.GetAttribute("src");
+            if (!Uri.TryCreate(source, UriKind.Absolute, out var uri)
+                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                element.RemoveAttribute("src");
+            }
+        };
         return sanitizer;
     }
 }
