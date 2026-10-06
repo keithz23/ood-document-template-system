@@ -11,8 +11,90 @@ checkpoint does not deploy the system or declare it production-ready.
 - HTTPS termination and a trusted public origin for each application
 - a secret/configuration provider outside source control
 
-The root Compose file runs local PostgreSQL only. Production images, an ingress,
-infrastructure-as-code, backups, monitoring, and CI/CD are not included.
+The root Compose file can build and run the API, frontend, and PostgreSQL for a
+single-VM academic demo. It publishes the app images to Docker Hub when configured
+with `.env.vm`; deploy HTTPS through a reverse proxy/domain before using real
+accounts publicly. Backups, monitoring, and CI/CD are not included.
+
+## Single-VM Docker Compose demo
+
+1. Create the two Docker Hub repositories and copy `.env.vm.example` to
+   `.env.vm`. Set the Docker Hub namespace, image tag, VM public URL, database
+   password, JWT key, and Gmail App Password. Do not commit `.env.vm`.
+2. Build and push from the repository root:
+
+   ```bash
+   docker login --username <DOCKERHUB_USERNAME>
+   docker compose --env-file .env.vm build api frontend
+   docker compose --env-file .env.vm push api frontend
+   ```
+
+3. On the VM, install Docker Engine and the Compose plugin. Copy
+   `docker-compose.yml`, the `nginx/` directory, and a protected `.env.vm` to
+   the VM, then pull and start:
+
+   ```bash
+   chmod 600 .env.vm
+   docker login --username <DOCKERHUB_USERNAME>
+   docker compose --env-file .env.vm pull
+   docker compose --env-file .env.vm up -d --no-build
+   docker compose --env-file .env.vm ps
+   ```
+
+   The VM firewall should allow SSH only from your IP and HTTP/HTTPS ports
+   80/443. Nginx routes `/` to the frontend and `/api/` to the API. PostgreSQL
+   is bound to VM loopback only. Do not expose application ports 3000/8080 or
+   port 5432 publicly.
+
+4. Apply EF Core migrations before first use. Compose does not run migrations
+   automatically. The PostgreSQL host port is bound to VM loopback; create an
+   SSH tunnel from the build machine and run `dotnet ef database update` using
+   `Host=127.0.0.1` and the database credentials in `.env.vm`.
+
+Set `DOMAIN_NAME=chiendos.jiramisu.tech`, `FRONTEND_ORIGIN=https://chiendos.jiramisu.tech`,
+and `NEXT_PUBLIC_API_URL=/api` in `.env.vm`. The frontend and API share the same
+origin, so the frontend uses the relative `/api` path.
+
+### Enable HTTPS with Let's Encrypt
+
+The Nginx container serves HTTP first and switches to HTTPS after the
+certificate exists. Ensure the domain's A record points to this VM and Azure's
+NSG allows inbound TCP 80 and 443. Let's Encrypt HTTP-01 validation requires
+public access to port 80.
+
+1. After copying the updated Compose file and `nginx/` directory to the VM,
+   update `.env.vm` with the domain and HTTPS frontend origin above, then start
+   or recreate the stack:
+
+   ```bash
+   sudo docker compose --env-file .env.vm up -d --no-build
+   ```
+
+2. Request the certificate (replace the email with an address you can access):
+
+   ```bash
+   sudo docker compose --env-file .env.vm --profile certbot run --rm certbot \
+     certonly --webroot --webroot-path /var/www/certbot \
+     --email you@example.com --agree-tos --no-eff-email \
+     -d chiendos.jiramisu.tech
+   ```
+
+3. Restart Nginx so its startup script loads the new certificate and HTTPS
+   configuration:
+
+   ```bash
+   sudo docker compose --env-file .env.vm restart nginx
+   sudo docker compose --env-file .env.vm logs --tail 50 nginx
+   ```
+
+4. Open `https://chiendos.jiramisu.tech`. HTTP requests redirect to HTTPS.
+   Certbot certificates expire, so schedule renewal and reload Nginx. For
+   example, add this daily cron entry with `sudo crontab -e`, replacing the
+   directory with the location of `docker-compose.yml` and `.env.vm` on the VM:
+
+   ```cron
+   17 3 * * * cd /home/azureuser/ood-document-template-system && docker compose --env-file .env.vm --profile certbot run --rm certbot renew --quiet && docker compose --env-file .env.vm restart nginx
+   ```
 
 ## Environment variables
 
@@ -31,15 +113,40 @@ infrastructure-as-code, backups, monitoring, and CI/CD are not included.
 | `SeedData__Enabled` | yes | Must be `false` outside local demonstration environments |
 | `DevelopmentEmail__FrontendBaseUrl` | development only | Frontend origin used to compose local reset URLs |
 | `DevelopmentEmail__ExposePasswordResetUrlInLogs` | yes | Must be `false` outside an isolated local Development environment |
+| `Email__Provider` | yes | `Development` (default) or `Smtp`; use `Smtp` only when SMTP secrets are configured |
+| `Email__SmtpHost` | SMTP only | SMTP hostname; Gmail uses `smtp.gmail.com` |
+| `Email__SmtpPort` | SMTP only | SMTP port; Gmail uses `587` |
+| `Email__UseStartTls` | SMTP only | Enable STARTTLS; use `true` for Gmail port 587 |
+| `Email__SmtpUser` | SMTP only | SMTP account email; store as a secret |
+| `Email__SmtpAppPassword` | SMTP only | Provider app password; store as a secret, never as an account password |
+| `Email__FromAddress` | SMTP only | Verified sender address; for Gmail demo, use the same Gmail address |
+| `Email__FromName` | no | Display name for outgoing email |
+| `Email__FrontendBaseUrl` | SMTP only | Public frontend origin used in password reset links |
 | `RateLimiting__PublicAuthentication__PermitLimit` | yes | Per-window request limit for each remote-IP/path partition; must be positive |
 | `RateLimiting__PublicAuthentication__WindowSeconds` | yes | Fixed-window duration in seconds; must be positive |
 
 Swagger UI and deterministic seeding are restricted to Development by the
 application. `appsettings.Development.json` contains local-only credentials and
 a local JWT key; neither value is suitable for a shared or production system.
-The included email adapter is not a production mailer. Configure a replacement
-`IEmailService` before deployment; never expose password-reset URLs in shared or
-production logs.
+The default email adapter is Development-only and never sends mail. For a small
+academic demo, `Email__Provider=Smtp` enables the Gmail SMTP adapter. Use a
+Google App Password (with 2-Step Verification enabled), store it only in local
+User Secrets or the hosting platform's secret store, and expect Gmail sending
+limits and account restrictions. This adapter is suitable for a controlled
+demo, not a production transactional email service. Never expose password-reset
+URLs in shared or production logs.
+
+For local SMTP testing, set secrets on the API project (do not put values in
+`appsettings.Development.json`):
+
+```bash
+cd backend/src/DocumentTemplateSystem.Api
+dotnet user-secrets set "Email:Provider" "Smtp"
+dotnet user-secrets set "Email:SmtpUser" "your-address@gmail.com"
+dotnet user-secrets set "Email:SmtpAppPassword" "your-google-app-password"
+dotnet user-secrets set "Email:FromAddress" "your-address@gmail.com"
+dotnet user-secrets set "Email:FrontendBaseUrl" "http://localhost:3000"
+```
 
 ### Frontend
 

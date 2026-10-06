@@ -88,6 +88,22 @@ at `http://localhost:5000`; `/health` and `/health/live` are liveness probes,
 Development seeding runs only when the environment is `Development` and
 `SeedData:Enabled` is true.
 
+The deterministic development seed runs only against an empty database. It
+includes eight published, active sample templates across Business, Finance,
+Human resources, Operations, and Marketing:
+
+- Professional services statement of work
+- Consulting services invoice
+- Executive profile and curriculum vitae
+- Executive project health report
+- 30-60-90 day employee onboarding plan
+- Production incident postmortem
+- Business travel expense report
+- Integrated marketing campaign brief
+
+The samples use structured HTML, tables, lists, and typed placeholders. They
+are demonstration content, not legal, financial, HR, or operational advice.
+
 | Role | Username | Email | Password |
 |---|---|---|---|
 | Admin | `admin` | `admin@example.test` | `Admin123!` |

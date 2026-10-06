@@ -34,7 +34,23 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHashService, AspNetPasswordHashService>();
         services.AddSingleton<IAccessTokenGenerator, JwtAccessTokenGenerator>();
         services.AddSingleton<IPasswordResetTokenService, CryptographicPasswordResetTokenService>();
-        services.AddSingleton<IEmailService, DevelopmentEmailService>();
+        var emailOptions = configuration.GetSection(EmailOptions.SectionName);
+        services.Configure<EmailOptions>(emailOptions);
+        var emailProvider = emailOptions.Get<EmailOptions>()?.Provider ?? EmailOptions.DevelopmentProvider;
+
+        if (string.Equals(emailProvider, EmailOptions.SmtpProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddTransient<IEmailService, SmtpEmailService>();
+        }
+        else if (string.Equals(emailProvider, EmailOptions.DevelopmentProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<IEmailService, DevelopmentEmailService>();
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"Email:Provider must be '{EmailOptions.DevelopmentProvider}' or '{EmailOptions.SmtpProvider}'.");
+        }
         services.AddScoped<IHtmlContentSanitizer, AllowlistHtmlContentSanitizer>();
         services.AddSingleton(TimeProvider.System);
         services.Configure<DevelopmentEmailOptions>(
