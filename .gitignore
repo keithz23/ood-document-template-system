@@ -1,6 +1,7 @@
 .DS_Store
 .env
 .env.local
+.env.vm
 
 # .NET
 **/bin/
@@ -17,4 +18,4 @@ frontend/coverage/
 # IDEs
 .idea/
 .vscode/
-
+*.pem
