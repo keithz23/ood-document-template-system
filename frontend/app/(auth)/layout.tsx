@@ -10,10 +10,10 @@ const highlights = [
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <aside className="relative hidden overflow-hidden bg-sidebar p-12 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between">
+      <aside className="relative hidden overflow-hidden bg-brand-panel p-12 text-brand-panel-foreground lg:flex lg:flex-col lg:justify-between">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -right-32 -top-32 size-[28rem] rounded-full bg-sidebar-primary/25 blur-3xl"
+          className="pointer-events-none absolute -right-32 -top-32 size-[28rem] rounded-full bg-brand-panel-accent/25 blur-3xl"
         />
         <div
           aria-hidden="true"
@@ -21,7 +21,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         />
 
         <div className="relative flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-sidebar-primary to-primary text-primary-foreground shadow-lg shadow-primary/30">
+          <span className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-brand-panel-accent to-primary text-primary-foreground shadow-lg shadow-primary/30">
             <FileText aria-hidden="true" className="size-5" />
           </span>
           <span className="font-heading text-lg font-bold">Document Workspace</span>
@@ -51,10 +51,10 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <h2 className="max-w-md text-3xl font-bold leading-tight tracking-[-0.02em]">
             Professional documents, built from templates you trust.
           </h2>
-          <ul className="mt-6 space-y-3 text-sm text-sidebar-foreground/75">
+          <ul className="mt-6 space-y-3 text-sm text-brand-panel-foreground/75">
             {highlights.map((item) => (
               <li key={item} className="flex items-center gap-2.5">
-                <CheckCircle2 aria-hidden="true" className="size-4 text-sidebar-primary" />
+                <CheckCircle2 aria-hidden="true" className="size-4 text-brand-panel-accent" />
                 {item}
               </li>
             ))}

@@ -49,7 +49,7 @@ function ProductMark() {
       href="/templates"
       className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
     >
-      <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-sidebar-primary to-primary text-primary-foreground shadow-sm shadow-primary/30">
+      <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-ring to-primary text-primary-foreground shadow-sm shadow-primary/30">
         <PanelLeft aria-hidden="true" className="size-4" />
       </span>
       <span className="font-heading text-sm font-bold tracking-[-0.01em]">
