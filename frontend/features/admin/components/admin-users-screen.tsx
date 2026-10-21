@@ -89,7 +89,7 @@ export function AdminUsersScreen() {
       {usersQuery.data ? (
         <section
           aria-label="User management"
-          className="overflow-hidden rounded-xl border bg-card"
+          className="overflow-hidden rounded-xl border bg-card shadow-xs"
         >
           <div className="flex flex-col gap-3 border-b p-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative w-full lg:max-w-sm">

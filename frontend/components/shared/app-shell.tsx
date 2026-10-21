@@ -49,10 +49,10 @@ function ProductMark() {
       href="/templates"
       className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
     >
-      <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+      <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-sidebar-primary to-primary text-primary-foreground shadow-sm shadow-primary/30">
         <PanelLeft aria-hidden="true" className="size-4" />
       </span>
-      <span className="text-sm font-semibold tracking-[-0.01em]">
+      <span className="font-heading text-sm font-bold tracking-[-0.01em]">
         Document Workspace
       </span>
     </Link>
@@ -82,13 +82,13 @@ function Navigation({
         onClick={onNavigate}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+          "relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-sidebar-ring/50",
           isActive
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-            : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground",
+            ? "bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-sidebar-primary"
+            : "text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
         )}
       >
-        <Icon aria-hidden="true" className="size-4" />
+        <Icon aria-hidden="true" className={cn("size-4", isActive && "text-sidebar-primary")} />
         {item.label}
       </Link>
     );
@@ -101,8 +101,8 @@ function Navigation({
         {accountNavigation.map(renderLink)}
       </div>
       {adminNavigation.some((item) => hasPermission(item.permission)) ? (
-        <div className="border-t pt-4">
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <div className="border-t border-sidebar-border pt-4">
+          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/45">
             Administration
           </p>
           <div className="space-y-1">
@@ -119,15 +119,15 @@ function UserIdentity() {
   const user = session?.user;
 
   return (
-    <div className="flex items-center gap-3 border-t px-3 pt-4">
-      <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <UserRound aria-hidden="true" className="size-4" />
+    <div className="flex items-center gap-3 border-t border-sidebar-border px-3 pt-4">
+      <span className="flex size-8 items-center justify-center rounded-full bg-sidebar-primary/20 text-xs font-semibold text-sidebar-primary ring-1 ring-sidebar-primary/30">
+        {user?.fullName?.trim().charAt(0).toUpperCase() ?? <UserRound aria-hidden="true" className="size-4" />}
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">
           {user?.fullName ?? "Signed-in user"}
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-sidebar-foreground/55">
           {user?.role === "Admin" ? "Admin workspace" : "Author workspace"}
         </p>
       </div>
@@ -135,6 +135,7 @@ function UserIdentity() {
         type="button"
         size="icon-sm"
         variant="ghost"
+        className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
         aria-label="Sign out"
         title="Sign out"
         onClick={() => logout()}
@@ -159,8 +160,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
 
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r bg-sidebar md:flex">
-        <div className="flex h-16 items-center border-b px-5">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+        <div className="flex h-16 items-center border-b border-sidebar-border px-5">
           <ProductMark />
         </div>
         <div className="flex flex-1 flex-col justify-between gap-8 px-3 py-4">
@@ -186,8 +187,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-[min(84vw,20rem)] bg-sidebar">
-          <SheetHeader className="border-b py-5">
+        <SheetContent side="left" className="w-[min(84vw,20rem)] bg-sidebar text-sidebar-foreground">
+          <SheetHeader className="border-b border-sidebar-border py-5">
             <SheetTitle>
               <ProductMark />
             </SheetTitle>

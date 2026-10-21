@@ -114,7 +114,7 @@ export function AdminUserDetailScreen({ userId }: { userId: string }) {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <section aria-labelledby="identity-heading" className="rounded-xl border bg-card p-5 sm:p-6">
+        <section aria-labelledby="identity-heading" className="rounded-xl border bg-card shadow-xs p-5 sm:p-6">
           <div className="flex items-start gap-4">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
               <UserRound aria-hidden="true" className="size-5" />
@@ -167,7 +167,7 @@ export function AdminUserDetailScreen({ userId }: { userId: string }) {
           ) : null}
         </section>
 
-        <section aria-labelledby="access-heading" className="rounded-xl border bg-card p-5 sm:p-6">
+        <section aria-labelledby="access-heading" className="rounded-xl border bg-card shadow-xs p-5 sm:p-6">
           <div className="flex items-center gap-3">
             <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
               <ShieldCheck aria-hidden="true" className="size-4" />

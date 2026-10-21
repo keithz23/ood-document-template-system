@@ -90,7 +90,7 @@ export function TemplateDetailScreen({ templateId }: { templateId: string }) {
           />
         </section>
         <aside className="space-y-6">
-          <section className="rounded-xl border bg-card p-5">
+          <section className="rounded-xl border bg-card shadow-xs p-5">
             <h2 className="text-base font-semibold">Template details</h2>
             <dl className="mt-4 space-y-4 text-sm">
               <div className="flex items-start gap-3">
@@ -132,7 +132,7 @@ export function TemplateDetailScreen({ templateId }: { templateId: string }) {
             </dl>
           </section>
 
-          <section className="rounded-xl border bg-card p-5">
+          <section className="rounded-xl border bg-card shadow-xs p-5">
             <div className="flex items-baseline justify-between gap-4">
               <h2 className="text-base font-semibold">Document fields</h2>
               <span className="text-xs text-muted-foreground">

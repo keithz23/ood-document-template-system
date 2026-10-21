@@ -37,9 +37,9 @@ export function ResetPasswordForm({ token }: { token: string }) {
   });
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 sm:px-6">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 sm:px-6 lg:bg-transparent">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 flex items-center gap-3 lg:hidden">
           <span className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <FileText aria-hidden="true" className="size-5" />
           </span>
@@ -49,7 +49,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
           </div>
         </div>
 
-        <section aria-labelledby="reset-password-heading" className="rounded-xl border bg-card p-6 sm:p-8">
+        <section aria-labelledby="reset-password-heading" className="rounded-xl border bg-card p-6 shadow-sm sm:p-8 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
           <h1 id="reset-password-heading" className="text-2xl font-semibold tracking-[-0.02em]">Set a new password</h1>
           <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
             Choose a new password for your account. You’ll return to sign in when it is saved.

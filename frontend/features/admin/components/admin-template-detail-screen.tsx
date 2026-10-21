@@ -204,7 +204,7 @@ export function AdminTemplateDetailScreen({
 
       <section
         aria-labelledby="template-overview-heading"
-        className="rounded-xl border bg-card"
+        className="rounded-xl border bg-card shadow-xs"
       >
         <div className="border-b px-5 py-4">
           <h2 id="template-overview-heading" className="font-semibold">
@@ -244,7 +244,7 @@ export function AdminTemplateDetailScreen({
 
       <section
         aria-labelledby="versions-heading"
-        className="overflow-hidden rounded-xl border bg-card"
+        className="overflow-hidden rounded-xl border bg-card shadow-xs"
       >
         <div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

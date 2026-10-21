@@ -19,7 +19,7 @@ export function PageLoadingState({
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }, (_, index) => (
-          <div key={index} className="rounded-xl border bg-card p-5">
+          <div key={index} className="rounded-xl border bg-card shadow-xs p-5">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="mt-5 h-5 w-3/4" />
             <Skeleton className="mt-3 h-4 w-full" />
@@ -74,7 +74,7 @@ export function ErrorState({
   return (
     <section
       role="alert"
-      className="flex min-h-80 flex-col items-center justify-center rounded-xl border bg-card px-6 py-12 text-center"
+      className="flex min-h-80 flex-col items-center justify-center rounded-xl border bg-card shadow-xs px-6 py-12 text-center"
     >
       <div className="flex size-10 items-center justify-center rounded-lg bg-destructive-subtle text-destructive">
         <AlertCircle aria-hidden="true" className="size-5" />

@@ -32,7 +32,7 @@ export function DocumentHistory({ documents }: { documents: readonly DocumentSum
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border bg-card shadow-xs p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-1" role="group" aria-label="Filter documents by status">
           {filters.map((option) => (
             <button
@@ -59,7 +59,7 @@ export function DocumentHistory({ documents }: { documents: readonly DocumentSum
         <EmptyState title="No documents match these filters" description="Try another status or search term." />
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-xl border bg-card md:block">
+          <div className="hidden overflow-hidden rounded-xl border bg-card shadow-xs md:block">
             <table className="w-full border-collapse text-left text-sm">
               <caption className="sr-only">Your saved and finalized documents</caption>
               <thead className="border-b bg-muted/60 text-xs font-medium uppercase tracking-[0.04em] text-muted-foreground">
@@ -81,7 +81,7 @@ export function DocumentHistory({ documents }: { documents: readonly DocumentSum
 
           <div className="space-y-3 md:hidden">
             {visibleDocuments.map((document) => (
-              <article key={document.id} className="rounded-xl border bg-card p-4">
+              <article key={document.id} className="rounded-xl border bg-card shadow-xs p-4">
                 <div className="flex items-start gap-3"><span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><FileText aria-hidden="true" className="size-4" /></span><div className="min-w-0 flex-1"><Link href={`/documents/${document.id}`} className="break-words font-medium leading-6 underline-offset-4 hover:underline">{document.title}</Link><p className="mt-1 text-sm text-muted-foreground">{document.source.templateName} · v{document.source.versionNumber}</p></div><StatusBadge status={document.status} /></div>
                 <div className="mt-4 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground"><span>Updated {dateFormatter.format(new Date(document.updatedAt))}</span><Link href={`/documents/${document.id}`} className="inline-flex min-h-9 items-center gap-1 rounded-md px-2 font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40">Open<ArrowUpRight aria-hidden="true" className="size-3.5" /></Link></div>
               </article>

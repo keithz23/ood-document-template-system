@@ -170,7 +170,7 @@ export function AdminTemplatesScreen() {
       {templatesQuery.data ? (
         <section
           aria-label="Template management"
-          className="overflow-hidden rounded-xl border bg-card"
+          className="overflow-hidden rounded-xl border bg-card shadow-xs"
         >
           <div className="grid gap-3 border-b p-4 lg:grid-cols-[minmax(16rem,1fr)_auto_auto] lg:items-center">
             <div className="relative">

@@ -61,9 +61,9 @@ export function LoginForm() {
   const submit = handleSubmit((values) => loginMutation.mutate(values));
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 sm:px-6">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 sm:px-6 lg:bg-transparent">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 flex items-center gap-3 lg:hidden">
           <span className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <FileText aria-hidden="true" className="size-5" />
           </span>
@@ -73,7 +73,7 @@ export function LoginForm() {
           </div>
         </div>
 
-        <section aria-labelledby="login-heading" className="rounded-xl border bg-card p-6 sm:p-8">
+        <section aria-labelledby="login-heading" className="rounded-xl border bg-card p-6 shadow-sm sm:p-8 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
           <h1 id="login-heading" className="text-2xl font-semibold tracking-[-0.02em]">
             Sign in
           </h1>

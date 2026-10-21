@@ -6,12 +6,12 @@ export function TemplateDocumentPreview({
   title: string;
 }) {
   return (
-    <div className="rounded-xl border bg-muted p-3 sm:p-6">
+    <div className="bg-dotted rounded-xl border bg-muted/60 p-3 sm:p-8">
       <iframe
         title={`${title} template preview`}
         sandbox=""
         srcDoc={content}
-        className="mx-auto min-h-[580px] w-full max-w-[720px] bg-card ring-1 ring-border"
+        className="mx-auto min-h-[580px] w-full max-w-[720px] rounded-sm bg-card shadow-lg shadow-black/5 ring-1 ring-border"
       />
     </div>
   );
