@@ -49,7 +49,7 @@ function ProductMark() {
       href="/templates"
       className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
     >
-      <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-ring to-primary text-primary-foreground shadow-sm shadow-primary/30">
+      <span className="flex size-8 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/20 text-primary-foreground shadow-sm shadow-primary/30">
         <PanelLeft aria-hidden="true" className="size-4" />
       </span>
       <span className="font-heading text-sm font-bold tracking-[-0.01em]">
@@ -85,7 +85,7 @@ function Navigation({
           "relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-sidebar-ring/50",
           isActive
             ? "bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-sidebar-primary"
-            : "text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
         )}
       >
         <Icon aria-hidden="true" className={cn("size-4", isActive && "text-sidebar-primary")} />
@@ -102,7 +102,7 @@ function Navigation({
       </div>
       {adminNavigation.some((item) => hasPermission(item.permission)) ? (
         <div className="border-t border-sidebar-border pt-4">
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/45">
+          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/60">
             Administration
           </p>
           <div className="space-y-1">
@@ -127,7 +127,7 @@ function UserIdentity() {
         <p className="truncate text-sm font-medium">
           {user?.fullName ?? "Signed-in user"}
         </p>
-        <p className="text-xs text-sidebar-foreground/55">
+        <p className="text-xs text-sidebar-foreground/70">
           {user?.role === "Admin" ? "Admin workspace" : "Author workspace"}
         </p>
       </div>
