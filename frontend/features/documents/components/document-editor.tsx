@@ -318,7 +318,7 @@ export function DocumentEditor({ template, document }: {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className={cn("rounded-xl border bg-card", mobilePane !== "fields" && "hidden lg:block")}>
+        <aside className={cn("rounded-xl border bg-card shadow-xs", mobilePane !== "fields" && "hidden lg:block")}>
           <div className="border-b px-5 py-4"><h2 className="font-semibold">Document fields</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Complete the values used in this template.</p></div>
           {readOnly ? (
             <dl className="divide-y px-5">{template.placeholders.map((placeholder) => <div key={placeholder.key} className="py-4"><dt className="text-xs font-medium text-muted-foreground">{placeholder.label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm">{values[placeholder.key] || "Not provided"}</dd></div>)}</dl>

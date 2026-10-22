@@ -138,7 +138,7 @@ export function AdminCategoriesScreen() {
       {categoriesQuery.data ? (
         <section
           aria-label="Category management"
-          className="overflow-hidden rounded-xl border bg-card"
+          className="overflow-hidden rounded-xl border bg-card shadow-xs"
         >
           <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-sm">

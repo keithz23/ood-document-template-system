@@ -16,7 +16,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
 
   if (!canAccessAdministration) {
     return (
-      <section className="flex min-h-80 flex-col items-center justify-center rounded-xl border bg-card px-6 py-12 text-center">
+      <section className="flex min-h-80 flex-col items-center justify-center rounded-xl border bg-card shadow-xs px-6 py-12 text-center">
         <div className="flex size-10 items-center justify-center rounded-lg bg-warning-subtle text-warning">
           <ShieldAlert aria-hidden="true" className="size-5" />
         </div>

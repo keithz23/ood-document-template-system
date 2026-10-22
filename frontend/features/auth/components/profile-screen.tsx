@@ -85,7 +85,7 @@ export function ProfileScreen() {
       />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <section aria-labelledby="profile-details-heading" className="rounded-xl border bg-card p-5 sm:p-6">
+        <section aria-labelledby="profile-details-heading" className="rounded-xl border bg-card shadow-xs p-5 sm:p-6">
           <div className="flex items-start gap-3">
             <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
               <UserRound aria-hidden="true" className="size-4" />
@@ -148,7 +148,7 @@ export function ProfileScreen() {
           </form>
         </section>
 
-        <section aria-labelledby="password-heading" className="rounded-xl border bg-card p-5 sm:p-6">
+        <section aria-labelledby="password-heading" className="rounded-xl border bg-card shadow-xs p-5 sm:p-6">
           <div className="flex items-start gap-3">
             <span className="flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
               <KeyRound aria-hidden="true" className="size-4" />
