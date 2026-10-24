@@ -208,7 +208,6 @@ namespace DocumentTemplateSystem.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("DocumentTemplateSystem.Domain.Entities.Placeholder", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("DataType")

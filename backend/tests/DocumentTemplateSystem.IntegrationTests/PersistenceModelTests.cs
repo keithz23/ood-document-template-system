@@ -123,6 +123,37 @@ public sealed class PersistenceModelTests
                 context.Entry(placeholder).State));
     }
 
+    [Fact]
+    public void Model_MatchesLatestMigrationSnapshot()
+    {
+        using var context = CreateContext();
+
+        Assert.False(context.Database.HasPendingModelChanges());
+    }
+
+    [Fact]
+    public void AddPlaceholder_ToTrackedDraftVersion_MarksPlaceholderAdded()
+    {
+        using var context = CreateContext();
+        var template = new Template(
+            "Agreement",
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "<p>{{client_name}}</p>");
+        var draft = template.Versions.Single();
+        context.Attach(template);
+
+        var placeholder = draft.AddPlaceholder(
+            "tax_id",
+            "Tax ID",
+            PlaceholderDataType.Text,
+            false);
+        context.ChangeTracker.DetectChanges();
+
+        Assert.Equal(EntityState.Added, context.Entry(placeholder).State);
+        Assert.Equal(EntityState.Unchanged, context.Entry(draft).State);
+    }
+
     private static void AssertUniqueIndex(
         IReadOnlyEntityType? entityType,
         params string[] propertyNames)

@@ -10,6 +10,7 @@ public sealed class PlaceholderConfiguration : IEntityTypeConfiguration<Placehol
     {
         builder.ToTable("Placeholders");
         builder.HasKey(placeholder => placeholder.Id);
+        builder.Property(placeholder => placeholder.Id).ValueGeneratedNever();
 
         builder.Property(placeholder => placeholder.Key).IsRequired();
         builder.Property(placeholder => placeholder.Label).IsRequired();
